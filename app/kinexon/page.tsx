@@ -1,6 +1,8 @@
 import { listSyncLogs } from "@/lib/store/fileStore";
 import KinexonImportForm from "@/components/KinexonImportForm";
 
+export const dynamic = "force-dynamic";
+
 export default function KinexonPage() {
   const logs = listSyncLogs();
 

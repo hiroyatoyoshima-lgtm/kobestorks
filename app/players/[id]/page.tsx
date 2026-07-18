@@ -15,6 +15,9 @@ import BarLineChart from "@/components/charts/BarLineChart";
 import LineTrendChart from "@/components/charts/LineTrendChart";
 import InbodyChart from "@/components/charts/InbodyChart";
 
+// Kinexon取込み(ローカルstore)の最新反映を毎回見るため静的化しない
+export const dynamic = "force-dynamic";
+
 const STATUS_BADGE: Record<string, string> = {
   ok: "b-ok",
   part: "b-part",

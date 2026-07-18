@@ -1,6 +1,9 @@
 import Link from "next/link";
 import { PLAYERS, STATUS_LABEL } from "@/lib/data/seed";
 
+// Kinexon取込み(ローカルstore)の最新反映を毎回見るため静的化しない
+export const dynamic = "force-dynamic";
+
 const STATUS_DOT: Record<string, string> = {
   ok: "var(--green)",
   warn: "var(--yellow)",

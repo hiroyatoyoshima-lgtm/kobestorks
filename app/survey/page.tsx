@@ -14,12 +14,37 @@ export default function SurveyPage() {
   const [painFlag, setPainFlag] = useState(false);
   const [comment, setComment] = useState("");
   const [toast, setToast] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    // 実運用では wellness テーブルへ upsert(当日再送信は上書き, §5.6)
-    setToast(true);
-    setTimeout(() => setToast(false), 2200);
+    setErrorMsg(null);
+    setLoading(true);
+    try {
+      const res = await fetch("/api/wellness", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          playerId,
+          sleepHours,
+          sleepQuality,
+          fatigue,
+          soreness,
+          stress,
+          painFlag,
+          comment,
+        }),
+      });
+      const json = await res.json();
+      if (!json.ok) throw new Error(json.error ?? "送信に失敗しました");
+      setToast(true);
+      setTimeout(() => setToast(false), 2200);
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : "送信に失敗しました");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -77,10 +102,15 @@ export default function SurveyPage() {
             onChange={(e) => setComment(e.target.value)}
           />
 
-          <button className="submit" type="submit">
-            送信する
+          <button className="submit" type="submit" disabled={loading}>
+            {loading ? "送信中..." : "送信する"}
           </button>
         </form>
+        {errorMsg && (
+          <p className="note" style={{ color: "var(--red)" }}>
+            ⚠️ {errorMsg}
+          </p>
+        )}
         <p className="note">
           送信 → Supabaseの`wellness`テーブルに記録 → ダッシュボードに即反映されます(30秒で完了できる入力を想定)。
         </p>
