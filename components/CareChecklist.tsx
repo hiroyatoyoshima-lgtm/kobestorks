@@ -22,7 +22,7 @@ export default function CareChecklist({ rows, persist = false }: { rows: CareRow
     if (persist) {
       try {
         await fetch("/api/care", {
-          method: "POST",
+          method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ careId: id, done: value }),
         });
