@@ -14,16 +14,26 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ja">
-      <body className="min-h-screen flex flex-col">
-        <header className="app-header">
-          <div className="logo">KS</div>
-          <div>
-            <h1>STORKS Performance Hub</h1>
-            <div className="sub">神戸ストークス パフォーマンスチーム データ管理</div>
-          </div>
-        </header>
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700&family=JetBrains+Mono:wght@400;600;700&display=swap"
+        />
+      </head>
+      <body>
         <AppNav />
-        <main className="flex-1 w-full">{children}</main>
+        <div className="app-body">
+          <header className="topbar">
+            <div className="logo">KS</div>
+            <div>
+              <h1>STORKS Performance Hub</h1>
+              <div className="sub">神戸ストークス パフォーマンスチーム データ管理</div>
+            </div>
+          </header>
+          <main>{children}</main>
+        </div>
       </body>
     </html>
   );

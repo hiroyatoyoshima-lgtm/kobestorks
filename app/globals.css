@@ -1,17 +1,30 @@
 @import "tailwindcss";
 
+/* seedsstayapps のデザイン言語(淡色背景+白パネル+ヘアライン+柔影)を緑基調で移植 */
+/* フォント(Zen Kaku Gothic New / JetBrains Mono)は layout.tsx の <link> で読み込む */
 :root {
-  --bg: #0e1a14;
-  --panel: #16241c;
-  --panel2: #1d2f24;
-  --border: #2a4433;
-  --green: #19b356;
-  --green-dim: #0f7a3a;
-  --text: #eaf3ee;
-  --muted: #8fae9c;
-  --red: #e05252;
-  --yellow: #e0b13d;
-  --blue: #4d9fdb;
+  --bg: #f1f6f2;
+  --bg-tint: #e6f0e9;
+  --panel: #ffffff;
+  --panel2: #f4faf6;
+  --border: rgba(14, 36, 26, 0.1);
+  --border-soft: rgba(14, 36, 26, 0.06);
+  --green: #1d9e75;
+  --green-deep: #157a5b;
+  --green-soft: #e3f4ec;
+  --text: #10241a;
+  --muted: #6f8a7b;
+  --soft: #43594c;
+  --red: #d9485a;
+  --red-soft: #fdeaec;
+  --yellow: #b0770f;
+  --yellow-soft: #faf0dc;
+  --blue: #3379c8;
+  --blue-soft: #e7f0fa;
+  --shadow: 0 1px 2px rgba(14, 36, 26, 0.05), 0 6px 22px rgba(14, 36, 26, 0.07);
+  --font-ui: "Zen Kaku Gothic New", "Hiragino Kaku Gothic ProN", "Noto Sans JP", system-ui, sans-serif;
+  --font-num: "JetBrains Mono", ui-monospace, monospace;
+  --rail-w: 78px;
 }
 
 * {
@@ -23,37 +36,132 @@ body {
   background: var(--bg);
   color: var(--text);
   min-height: 100%;
-  font-family: "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
+  font-family: var(--font-ui);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── レイアウト：左レール + 本体 ─────────────────── */
+.app-body {
+  margin-left: var(--rail-w);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
 }
 
 main {
-  padding: 20px 22px;
+  padding: 22px 28px 40px;
   max-width: 1150px;
   margin: 0 auto;
   width: 100%;
+  flex: 1;
 }
 
+header.topbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 28px;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--border-soft);
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+header.topbar .logo {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, var(--green) 0%, var(--green-deep) 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  color: #fff;
+  font-size: 13px;
+  letter-spacing: 0.02em;
+  flex-shrink: 0;
+}
+header.topbar h1 {
+  font-size: 14.5px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  line-height: 1.2;
+}
+header.topbar .sub {
+  font-size: 10.5px;
+  color: var(--muted);
+  margin-top: 1px;
+}
+
+/* ── 左レールナビ ────────────────────────────────── */
+nav.rail {
+  position: fixed;
+  inset: 0 auto 0 0;
+  width: var(--rail-w);
+  background: var(--panel);
+  border-right: 1px solid var(--border-soft);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 14px 8px;
+  z-index: 30;
+}
+nav.rail a {
+  width: 62px;
+  padding: 9px 0 7px;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  transition: background 0.15s, color 0.15s;
+}
+nav.rail a svg {
+  width: 19px;
+  height: 19px;
+}
+nav.rail a:hover {
+  color: var(--text);
+  background: var(--panel2);
+}
+nav.rail a.active {
+  color: var(--green-deep);
+  background: var(--green-soft);
+  font-weight: 700;
+}
+
+/* ── 見出し ─────────────────────────────────────── */
 h2.section-title {
-  font-size: 16px;
+  font-size: 15px;
+  font-weight: 700;
   margin-bottom: 14px;
   display: flex;
   align-items: center;
   gap: 8px;
+  letter-spacing: 0.01em;
 }
 h2.section-title::before {
   content: "";
-  width: 4px;
-  height: 16px;
+  width: 3px;
+  height: 15px;
   background: var(--green);
   border-radius: 2px;
 }
 
+/* ── グリッド / カード ──────────────────────────── */
 .grid {
   display: grid;
   gap: 14px;
 }
 .grid.kpi {
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
 }
 .grid.two {
   grid-template-columns: 1fr 1fr;
@@ -66,33 +174,55 @@ h2.section-title::before {
 
 .card {
   background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 16px;
+  border: 1px solid var(--border-soft);
+  border-radius: 16px;
+  padding: 18px;
+  box-shadow: var(--shadow);
 }
 .kpi .card {
-  text-align: center;
-}
-.kpi .num {
-  font-size: 26px;
-  font-weight: 800;
-  margin: 4px 0;
+  text-align: left;
+  padding: 16px 18px;
 }
 .kpi .lbl {
-  font-size: 11.5px;
+  font-size: 11px;
   color: var(--muted);
+  font-weight: 500;
+  letter-spacing: 0.04em;
+}
+.kpi .num {
+  font-family: var(--font-num);
+  font-size: 28px;
+  font-weight: 600;
+  margin: 6px 0 8px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
 }
 .kpi .delta {
+  display: inline-flex;
+  align-items: center;
   font-size: 11px;
+  font-weight: 700;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: var(--bg-tint);
 }
 .up {
-  color: var(--green);
+  color: var(--green-deep);
+}
+.kpi .delta.up {
+  background: var(--green-soft);
 }
 .down {
   color: var(--red);
 }
+.kpi .delta.down {
+  background: var(--red-soft);
+}
 .warn {
   color: var(--yellow);
+}
+.kpi .delta.warn {
+  background: var(--yellow-soft);
 }
 
 .chart-box {
@@ -100,48 +230,65 @@ h2.section-title::before {
   height: 230px;
 }
 
+/* ── アラート ───────────────────────────────────── */
 .alert {
   display: flex;
   gap: 10px;
   align-items: flex-start;
-  padding: 10px 12px;
-  border-radius: 8px;
-  background: var(--panel2);
+  padding: 11px 14px;
+  border-radius: 10px;
+  background: var(--yellow-soft);
   margin-bottom: 8px;
   font-size: 13px;
-  border-left: 3px solid var(--yellow);
+  line-height: 1.6;
 }
 .alert.red {
-  border-left-color: var(--red);
+  background: var(--red-soft);
+}
+.alert > span:first-child {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--yellow);
+  margin-top: 7px;
+  font-size: 0;
+  color: transparent;
+  overflow: hidden;
+}
+.alert.red > span:first-child {
+  background: var(--red);
 }
 .alert .who {
   font-weight: 700;
 }
 
+/* ── バッジ ─────────────────────────────────────── */
 .badge {
   display: inline-block;
   padding: 2px 10px;
-  border-radius: 20px;
+  border-radius: 999px;
   font-size: 11px;
   font-weight: 700;
 }
 .b-out {
-  background: #3d1d1d;
+  background: var(--red-soft);
   color: var(--red);
 }
 .b-part {
-  background: #3d331d;
+  background: var(--yellow-soft);
   color: var(--yellow);
 }
 .b-soon {
-  background: #1d3d2a;
-  color: var(--green);
+  background: var(--green-soft);
+  color: var(--green-deep);
 }
 .b-ok {
-  background: #1d2f3d;
+  background: var(--blue-soft);
   color: var(--blue);
 }
 
+/* ── テーブル ───────────────────────────────────── */
 table {
   width: 100%;
   border-collapse: collapse;
@@ -153,16 +300,25 @@ th {
   text-align: left;
   padding: 8px 10px;
   border-bottom: 1px solid var(--border);
-  font-size: 11.5px;
+  font-size: 11px;
+  letter-spacing: 0.03em;
 }
 td {
   padding: 10px;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--border-soft);
+  font-variant-numeric: tabular-nums;
 }
 tr:last-child td {
   border-bottom: none;
 }
+tbody tr {
+  transition: background 0.12s;
+}
+tbody tr:hover {
+  background: var(--panel2);
+}
 
+/* ── 選手カード ─────────────────────────────────── */
 .players {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
@@ -170,38 +326,41 @@ tr:last-child td {
 }
 .pcard {
   background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 16px 10px;
+  border: 1px solid var(--border-soft);
+  border-radius: 16px;
+  padding: 18px 10px 14px;
   text-align: center;
   cursor: pointer;
-  transition: 0.15s;
+  box-shadow: var(--shadow);
+  transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
 }
 .pcard:hover {
   border-color: var(--green);
   transform: translateY(-2px);
+  box-shadow: 0 2px 4px rgba(14, 36, 26, 0.06), 0 10px 28px rgba(14, 36, 26, 0.12);
 }
 .avatar {
-  width: 64px;
-  height: 64px;
+  width: 60px;
+  height: 60px;
   border-radius: 50%;
-  margin: 0 auto 8px;
+  margin: 0 auto 9px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 20px;
-  font-weight: 800;
+  font-family: var(--font-num);
+  font-size: 19px;
+  font-weight: 600;
   color: #fff;
   position: relative;
 }
 .avatar .dot {
   position: absolute;
-  bottom: 2px;
-  right: 2px;
+  bottom: 1px;
+  right: 1px;
   width: 14px;
   height: 14px;
   border-radius: 50%;
-  border: 2px solid var(--panel);
+  border: 2.5px solid var(--panel);
 }
 .pcard .nm {
   font-size: 13px;
@@ -210,6 +369,7 @@ tr:last-child td {
 .pcard .pos {
   font-size: 11px;
   color: var(--muted);
+  margin-top: 2px;
 }
 
 .detail-head {
@@ -220,13 +380,14 @@ tr:last-child td {
   margin-bottom: 16px;
 }
 .detail-head .avatar {
-  width: 84px;
-  height: 84px;
-  font-size: 26px;
+  width: 80px;
+  height: 80px;
+  font-size: 24px;
   margin: 0;
 }
 .detail-head .info h3 {
   font-size: 20px;
+  font-weight: 700;
 }
 .detail-head .info p {
   font-size: 12.5px;
@@ -235,24 +396,27 @@ tr:last-child td {
 }
 
 .back {
-  background: none;
+  background: var(--panel);
   border: 1px solid var(--border);
-  color: var(--muted);
+  color: var(--soft);
   padding: 6px 14px;
-  border-radius: 8px;
+  border-radius: 999px;
   cursor: pointer;
   margin-bottom: 14px;
   font-size: 12.5px;
+  transition: border-color 0.15s, color 0.15s;
 }
 .back:hover {
-  color: var(--text);
+  color: var(--green-deep);
   border-color: var(--green);
 }
 
+/* ── フォーム ───────────────────────────────────── */
 form label {
   display: block;
   font-size: 12.5px;
-  color: var(--muted);
+  color: var(--soft);
+  font-weight: 500;
   margin: 14px 0 6px;
 }
 select,
@@ -261,12 +425,21 @@ input[type="date"],
 input[type="text"],
 textarea {
   width: 100%;
-  background: var(--panel2);
+  background: var(--panel);
   border: 1px solid var(--border);
   color: var(--text);
-  padding: 10px;
-  border-radius: 8px;
+  padding: 10px 12px;
+  border-radius: 10px;
   font-size: 14px;
+  font-family: var(--font-ui);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+select:focus,
+input:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--green);
+  box-shadow: 0 0 0 3px var(--green-soft);
 }
 
 .scale {
@@ -276,17 +449,23 @@ textarea {
 .scale button {
   flex: 1;
   padding: 10px 0;
-  background: var(--panel2);
+  background: var(--panel);
   border: 1px solid var(--border);
-  color: var(--muted);
-  border-radius: 8px;
+  color: var(--soft);
+  border-radius: 10px;
   cursor: pointer;
   font-size: 14px;
+  font-family: var(--font-num);
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+.scale button:hover {
+  border-color: var(--green);
 }
 .scale button.sel {
   background: var(--green);
   color: #fff;
   border-color: var(--green);
+  font-weight: 600;
 }
 
 .submit {
@@ -296,13 +475,18 @@ textarea {
   background: var(--green);
   color: #fff;
   border: none;
-  border-radius: 10px;
+  border-radius: 12px;
   font-size: 15px;
   font-weight: 700;
   cursor: pointer;
+  box-shadow: var(--shadow);
+  transition: background 0.15s, transform 0.1s;
 }
 .submit:hover {
-  background: var(--green-dim);
+  background: var(--green-deep);
+}
+.submit:active {
+  transform: translateY(1px);
 }
 
 .toast {
@@ -310,12 +494,13 @@ textarea {
   bottom: 24px;
   left: 50%;
   transform: translateX(-50%);
-  background: var(--green);
+  background: var(--text);
   color: #fff;
   padding: 12px 24px;
-  border-radius: 10px;
+  border-radius: 12px;
   font-size: 14px;
   z-index: 99;
+  box-shadow: var(--shadow);
 }
 
 .note {
@@ -333,6 +518,7 @@ textarea {
   margin-top: 14px;
 }
 
+/* ── 日付ナビ ───────────────────────────────────── */
 .datenav {
   display: flex;
   gap: 8px;
@@ -341,82 +527,58 @@ textarea {
   flex-wrap: wrap;
 }
 .datenav button {
-  background: var(--panel2);
+  background: var(--panel);
   border: 1px solid var(--border);
   color: var(--text);
-  padding: 8px 12px;
-  border-radius: 8px;
+  padding: 8px 14px;
+  border-radius: 999px;
   cursor: pointer;
   font-size: 13px;
+  transition: border-color 0.15s, background 0.15s;
 }
 .datenav button:hover {
   border-color: var(--green);
+  background: var(--green-soft);
 }
 .datenav input {
-  background: var(--panel2);
+  width: auto;
+  background: var(--panel);
   border: 1px solid var(--border);
   color: var(--text);
-  padding: 7px 10px;
-  border-radius: 8px;
+  padding: 7px 12px;
+  border-radius: 10px;
   font-size: 14px;
-  color-scheme: dark;
+  font-family: var(--font-num);
+  color-scheme: light;
 }
 
-header.app-header {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 14px 22px;
-  background: var(--panel);
-  border-bottom: 2px solid var(--green);
-}
-.logo {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background: var(--green);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 800;
-  color: #fff;
-  font-size: 15px;
-  flex-shrink: 0;
-}
-header.app-header h1 {
-  font-size: 17px;
-  letter-spacing: 0.5px;
-}
-header.app-header .sub {
-  font-size: 11px;
-  color: var(--muted);
-}
-
-nav.app-nav {
-  display: flex;
-  gap: 4px;
-  padding: 10px 22px;
-  background: var(--panel);
-  border-bottom: 1px solid var(--border);
-  overflow-x: auto;
-}
-nav.app-nav a {
-  background: none;
-  border: 1px solid transparent;
-  color: var(--muted);
-  padding: 8px 16px;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 13.5px;
-  white-space: nowrap;
-  text-decoration: none;
-  display: inline-block;
-}
-nav.app-nav a.active {
-  background: var(--panel2);
-  color: var(--text);
-  border-color: var(--green);
-}
-nav.app-nav a:hover {
-  color: var(--text);
+/* ── モバイル：レールを下タブバー化 ─────────────── */
+@media (max-width: 768px) {
+  .app-body {
+    margin-left: 0;
+  }
+  main {
+    padding: 16px 14px 110px;
+  }
+  header.topbar {
+    padding: 10px 14px;
+  }
+  nav.rail {
+    inset: auto 0 0 0;
+    width: 100%;
+    height: 64px;
+    flex-direction: row;
+    justify-content: space-around;
+    padding: 6px 4px;
+    border-right: none;
+    border-top: 1px solid var(--border-soft);
+    box-shadow: 0 -4px 16px rgba(14, 36, 26, 0.06);
+  }
+  nav.rail a {
+    width: auto;
+    min-width: 52px;
+    padding: 6px 6px 4px;
+    gap: 2px;
+    font-size: 9.5px;
+  }
 }

@@ -4,7 +4,7 @@
 
 import type { CareLog, Injury, NutritionReport, Player } from "../types";
 
-const AVATAR_COLORS = ["#19b356", "#4d9fdb", "#e0b13d", "#9b6dd6", "#e05252", "#3dc9b0"];
+const AVATAR_COLORS = ["#1d9e75", "#3379c8", "#b0770f", "#7c5cd6", "#d9485a", "#0e9c8f"];
 
 export const PLAYERS: Player[] = [
   { playerId: "P001", no: 1, nameJa: "中野 司", nameKinexon: "Tsukasa Nakano", position: "SG", positionGroup: "GUARD", active: true, status: "ok", color: AVATAR_COLORS[0] },

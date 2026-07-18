@@ -64,7 +64,7 @@ export default async function DashboardPage({
 
       <div className="card mt">
         <h2 className="section-title">
-          ⚠️ この日のアラート{" "}
+          この日のアラート{" "}
           <span style={{ fontSize: 11, color: "var(--muted)", fontWeight: 400 }}>※内容はダミー</span>
         </h2>
         {data.alerts.length === 0 ? (
