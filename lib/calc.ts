@@ -1,0 +1,141 @@
+// §6 アラートロジック・§7 計算仕様。
+// 実DB接続後は total_aal 等の元データは sessions/wellness テーブルの実測値に置き換わるが、
+// 計算式(target_aal・deficit・ACWR・アラート判定)はそのまま流用できる形にしてある。
+
+import type { AlertItem, DailyLoad, DayType, Player } from "./types";
+import { DEFAULT_SETTINGS, TeamSettings, type DailyIntensityBand } from "./settings";
+import { dateSeed } from "./data/rng";
+import { getDailyLoad as getStoredDailyLoad, getRecentTotalAal } from "./store/fileStore";
+
+export function targetAal(player: Player, dt: DayType, settings: TeamSettings = DEFAULT_SETTINGS): number {
+  return Math.round(
+    settings.targetAalByPositionGroup[player.positionGroup] * settings.dayTypeCoefficient[dt]
+  );
+}
+
+export function intensityBand(totalAal: number, settings: TeamSettings = DEFAULT_SETTINGS): DailyIntensityBand {
+  const band = settings.intensityBands.find((b) => totalAal <= b.max);
+  return band ? band.label : "VERY-HIGH";
+}
+
+// ACWR = 直近7日AAL合計 ÷ 直近28日AALの7日平均。
+// ダミー実装では日付シードから決定論的な疑似値を作る(本番は daily_load の実測値を集計する)。
+export function pseudoAcwr(player: Player, date: string): number {
+  const s = player.no * 7 + dateSeed(date);
+  return +(0.85 + ((s * 17) % 55) / 100).toFixed(2);
+}
+
+export function pseudoTotalAal(player: Player, date: string): number {
+  const s = player.no * 7 + dateSeed(date);
+  return Math.round(300 + ((s * 73) % 280));
+}
+
+export function computeDailyLoad(
+  player: Player,
+  date: string,
+  dt: DayType,
+  settings: TeamSettings = DEFAULT_SETTINGS
+): DailyLoad {
+  const total = pseudoTotalAal(player, date);
+  const target = targetAal(player, dt, settings);
+  const deficit = total - target;
+  const deficitMin = deficit < 0 ? +(Math.abs(deficit) / 20).toFixed(1) : 0;
+  const acwr = pseudoAcwr(player, date);
+  const s = player.no * 7 + dateSeed(date);
+  const srpe = +(1 + ((s * 11) % 40) / 10).toFixed(1);
+  return {
+    playerId: player.playerId,
+    date,
+    totalAal: total,
+    targetAal: target,
+    deficitLoad: deficit,
+    deficitMin,
+    intensityBand: intensityBand(total, settings),
+    acwr,
+    srpe,
+  };
+}
+
+// Kinexon実データ(fileStore)から ACWR = 直近7日合計 ÷ 直近28日の7日平均、を計算する。
+// 実データが十分に蓄積していない期間は null を返し、呼び出し側はダミー値にフォールバックする。
+export function acwrFromStore(playerId: string, date: string): number | null {
+  const recent7 = getRecentTotalAal(playerId, date, 7);
+  const recent28 = getRecentTotalAal(playerId, date, 28);
+  if (recent7.length < 3 || recent28.length < 7) return null;
+  const acute7 = recent7.reduce((sum, d) => sum + d.totalAal, 0);
+  const sum28 = recent28.reduce((sum, d) => sum + d.totalAal, 0);
+  const chronicAvg7 = sum28 / 4;
+  if (chronicAvg7 === 0) return null;
+  return +(acute7 / chronicAvg7).toFixed(2);
+}
+
+// その日の実測値(Kinexon取込み)があればそれを、無ければダミー値を返す(§11のダミー差替え設計)。
+export function getEffectiveDailyLoad(
+  player: Player,
+  date: string,
+  dt: DayType,
+  settings: TeamSettings = DEFAULT_SETTINGS
+): DailyLoad & { isReal: boolean } {
+  const stored = getStoredDailyLoad(player.playerId, date);
+  if (!stored) {
+    return { ...computeDailyLoad(player, date, dt, settings), isReal: false };
+  }
+  const acwr = acwrFromStore(player.playerId, date) ?? pseudoAcwr(player, date);
+  const s = player.no * 7 + dateSeed(date);
+  const srpe = +(1 + ((s * 11) % 40) / 10).toFixed(1); // Kinexonにはsrpe元データ(RPE)が無いため引き続きダミー
+  return {
+    playerId: player.playerId,
+    date,
+    totalAal: stored.totalAal,
+    targetAal: stored.targetAal,
+    deficitLoad: stored.deficitLoad,
+    deficitMin: stored.deficitMin,
+    intensityBand: stored.intensityBand as DailyIntensityBand,
+    acwr,
+    srpe,
+    isReal: true,
+  };
+}
+
+export function effectiveTotalAal(player: Player, date: string): number {
+  const stored = getStoredDailyLoad(player.playerId, date);
+  return stored ? stored.totalAal : pseudoTotalAal(player, date);
+}
+
+export function acwrBadgeClass(acwr: number, settings: TeamSettings = DEFAULT_SETTINGS): string {
+  if (acwr > settings.acwrAlert) return "b-out";
+  if (acwr > settings.acwrWarn) return "b-part";
+  return "b-soon";
+}
+
+// 選手・日付ごとのアラート判定(§6)。ウェルネス個人平均比・ACWR・負荷急増の3種。
+export function computeAlerts(
+  players: Player[],
+  date: string,
+  settings: TeamSettings = DEFAULT_SETTINGS
+): AlertItem[] {
+  const alerts: AlertItem[] = [];
+  for (const p of players) {
+    const acwr = acwrFromStore(p.playerId, date) ?? pseudoAcwr(p, date);
+    if (acwr > settings.acwrAlert) {
+      alerts.push({
+        playerId: p.playerId,
+        date,
+        type: "ACWR",
+        severity: "alert",
+        value: acwr.toFixed(2),
+        message: `急性:慢性負荷比 ${acwr.toFixed(2)}(基準${settings.acwrAlert}超過)。負荷調整を推奨`,
+      });
+    } else if (acwr > settings.acwrWarn) {
+      alerts.push({
+        playerId: p.playerId,
+        date,
+        type: "ACWR",
+        severity: "warn",
+        value: acwr.toFixed(2),
+        message: `急性:慢性負荷比 ${acwr.toFixed(2)}(注意閾値${settings.acwrWarn}超過)。モニタリング推奨`,
+      });
+    }
+  }
+  return alerts;
+}

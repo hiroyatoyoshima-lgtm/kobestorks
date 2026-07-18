@@ -1,65 +1,141 @@
-import Image from "next/image";
+import { getDashboardData, todayISO } from "@/lib/data/dashboard";
+import DateNav from "@/components/DateNav";
+import TeamLoadChart from "@/components/charts/TeamLoadChart";
+import WellnessChart from "@/components/charts/WellnessChart";
 
-export default function Home() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ date?: string }>;
+}) {
+  const { date: dateParam } = await searchParams;
+  const date = dateParam || todayISO();
+  const data = getDashboardData(date);
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <>
+      <h2 className="section-title">チームサマリー</h2>
+      <DateNav date={data.date} dayType={data.dayType} />
+
+      <div className="grid kpi">
+        <div className="card">
+          <div className="lbl">参加可能選手</div>
+          <div className="num">{data.kpi.availablePlayers}</div>
+          <div className="delta warn">{data.kpi.availableNote}</div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
+        <div className="card">
+          <div className="lbl">チーム平均 AAL</div>
+          <div className="num">{data.kpi.teamAal}</div>
+          <div className={`delta ${data.kpi.teamAalUp ? "up" : "down"}`}>{data.kpi.teamAalDelta}</div>
+        </div>
+        <div className="card">
+          <div className="lbl">ウェルネス平均</div>
+          <div className="num">
+            <span>{data.kpi.wellnessAvg}</span>
+            <span style={{ fontSize: 14, color: "var(--muted)" }}>/5</span>
+          </div>
+          <div className={`delta ${data.kpi.wellnessUp ? "up" : "down"}`}>{data.kpi.wellnessDelta}</div>
+        </div>
+        <div className="card">
+          <div className="lbl">アンケート回答</div>
+          <div className="num">{data.kpi.surveyRate}</div>
+          <div className="delta warn">未回答あり</div>
+        </div>
+      </div>
+
+      <div className="grid two mt">
+        <div className="card">
+          <h2 className="section-title">チーム負荷推移(直近14日) AAL × sRPE</h2>
+          <div className="chart-box">
+            <TeamLoadChart labels={data.dayLabels} aal={data.teamLoadSeries.aal} srpe={data.teamLoadSeries.srpe} />
+          </div>
+        </div>
+        <div className="card">
+          <h2 className="section-title">疲労度 × Distance(チーム平均・直近14日)</h2>
+          <div className="chart-box">
+            <WellnessChart
+              labels={data.dayLabels}
+              distance={data.wellnessSeries.distance}
+              fatigue={data.wellnessSeries.fatigue}
             />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+          </div>
         </div>
-      </main>
-    </div>
+      </div>
+
+      <div className="card mt">
+        <h2 className="section-title">
+          ⚠️ この日のアラート{" "}
+          <span style={{ fontSize: 11, color: "var(--muted)", fontWeight: 400 }}>※内容はダミー</span>
+        </h2>
+        {data.alerts.length === 0 ? (
+          <p className="note">この日のアラートはありません</p>
+        ) : (
+          data.alerts.map((a, i) => (
+            <div key={i} className={`alert ${a.cls}`}>
+              <span>{a.icon}</span>
+              <div>
+                <span className="who">
+                  #{a.playerNo} {a.playerName}
+                </span>{" "}
+                — {a.text}
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      <div className="card mt" style={{ overflowX: "auto" }}>
+        <h2 className="section-title">
+          デイリーレポート(選手別サマリー){" "}
+          {data.usingRealData ? (
+            <span className="badge b-ok">Kinexon実データ反映中</span>
+          ) : (
+            <span style={{ fontSize: 11, color: "var(--muted)", fontWeight: 400 }}>
+              ※数値はダミー。Kinexon取込み(管理者)で実データに切替
+            </span>
+          )}
+        </h2>
+        <table>
+          <thead>
+            <tr>
+              <th>選手</th>
+              <th>Total AAL</th>
+              <th>設定値</th>
+              <th>不足load</th>
+              <th>不足mins</th>
+              <th>Intensity</th>
+              <th>ACWR</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.dailyTable.map((row) => (
+              <tr key={row.no}>
+                <td>
+                  <b>
+                    #{row.no} {row.name}
+                  </b>
+                </td>
+                <td>{row.total}</td>
+                <td>{row.target}</td>
+                <td style={{ color: row.diff < 0 ? "var(--red)" : "var(--green)" }}>
+                  {row.diff > 0 ? "+" : ""}
+                  {row.diff}
+                </td>
+                <td>{row.minsLabel}</td>
+                <td>{row.intensity}</td>
+                <td>
+                  <span className={`badge ${row.acwrBadge}`}>{row.acwr}</span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="card mt">
+        <h2 className="section-title">S&Cコメント</h2>
+        <p style={{ fontSize: 13.5, lineHeight: 1.8, color: "var(--text)" }}>{data.comment}</p>
+      </div>
+    </>
   );
 }
