@@ -39,7 +39,7 @@ export default async function PlayerDetailPage({
   const ibTrend = inbodyTrend(player);
   const date = todayISO();
   const aal = aalTrend(player, date);
-  const wellness = wellnessTrend(player, date);
+  const wellness = await wellnessTrend(player, date);
   const history = careHistory(player);
 
   return (

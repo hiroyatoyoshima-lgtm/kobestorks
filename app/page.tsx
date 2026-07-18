@@ -10,7 +10,7 @@ export default async function DashboardPage({
 }) {
   const { date: dateParam } = await searchParams;
   const date = dateParam || todayISO();
-  const data = getDashboardData(date);
+  const data = await getDashboardData(date);
 
   return (
     <>

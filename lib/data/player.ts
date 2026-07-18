@@ -2,6 +2,7 @@ import { PLAYERS, INJURIES, STATUS_LABEL } from "./seed";
 import { last14Days, labelMD, seededSeries } from "./rng";
 import type { Player } from "../types";
 import { effectiveTotalAal } from "../calc";
+import { compositeScore, getPlayerWellnessRange } from "./wellness-repo";
 
 export function getPlayer(playerId: string): Player | undefined {
   return PLAYERS.find((p) => p.playerId === playerId);
@@ -40,11 +41,18 @@ export function aalTrend(player: Player, anchorDate: string) {
   };
 }
 
-export function wellnessTrend(player: Player, anchorDate: string) {
+export async function wellnessTrend(player: Player, anchorDate: string) {
   const days = last14Days(anchorDate);
+  const real = await getPlayerWellnessRange(player.playerId, days[0], days[days.length - 1]);
+  const dummy = seededSeries(player.no * 3, 34, 18, days).map((v) => +Math.min(5, Math.max(1, v / 10)).toFixed(1));
+
   return {
     labels: days.map(labelMD),
-    values: seededSeries(player.no * 3, 34, 18, days).map((v) => +Math.min(5, Math.max(1, v / 10)).toFixed(1)),
+    // 実際にアンケートに回答があった日は実測値(総合スコア=4項目平均)、無い日はダミーで補完
+    values: days.map((d, i) => {
+      const row = real?.get(d);
+      return row ? compositeScore(row) : dummy[i];
+    }),
   };
 }
 
