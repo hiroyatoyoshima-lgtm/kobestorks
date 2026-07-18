@@ -41,7 +41,7 @@ export default function NutritionForm() {
       <p className="note">
         実運用ではSupabaseの`nutrition`テーブルに記録され、デイリーレポートに自動掲載されます。
       </p>
-      {toast && <div className="toast">✅ 記録しました</div>}
+      {toast && <div className="toast">記録しました</div>}
     </div>
   );
 }

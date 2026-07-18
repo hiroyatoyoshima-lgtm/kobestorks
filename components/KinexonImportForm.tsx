@@ -123,7 +123,7 @@ export default function KinexonImportForm() {
           onChange={(e) => e.target.files?.[0] && loadFile(e.target.files[0])}
         />
         <p style={{ fontSize: 14 }}>
-          {fileName ? `📄 ${fileName}` : "Kinexonエクスポート CSV をここにドラッグ&ドロップ、またはクリックして選択"}
+          {fileName ? `${fileName}` : "Kinexonエクスポート CSV をここにドラッグ&ドロップ、またはクリックして選択"}
         </p>
         {parsed && (
           <p className="note">
@@ -239,7 +239,7 @@ export default function KinexonImportForm() {
           )}
           {committed && (
             <p className="note" style={{ color: "var(--green)", marginTop: 10 }}>
-              ✅ 取込みが完了しました。ダッシュボード・選手ページに反映されています(同一date+選手の再取込みは上書き)。
+              取込みが完了しました。ダッシュボード・選手ページに反映されています(同一date+選手の再取込みは上書き)。
             </p>
           )}
         </div>

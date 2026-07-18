@@ -115,7 +115,7 @@ export default function SurveyPage() {
           送信 → Supabaseの`wellness`テーブルに記録 → ダッシュボードに即反映されます(30秒で完了できる入力を想定)。
         </p>
       </div>
-      {toast && <div className="toast">✅ 送信しました</div>}
+      {toast && <div className="toast">送信しました</div>}
     </>
   );
 }

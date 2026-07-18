@@ -129,7 +129,7 @@ export default async function PlayerDetailPage({
         <div className="card">
           <h2 className="section-title">ウェルネス推移(14日)</h2>
           <div className="chart-box">
-            <LineTrendChart labels={wellness.labels} label="総合スコア" data={wellness.values} color="#4d9fdb" />
+            <LineTrendChart labels={wellness.labels} label="総合スコア" data={wellness.values} color="#3379c8" />
           </div>
         </div>
       </div>
