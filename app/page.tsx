@@ -84,6 +84,33 @@ export default async function DashboardPage({
         )}
       </div>
 
+      {data.playerComments && (
+        <div className="card mt">
+          <h2 className="section-title">
+            選手コメント・申告{" "}
+            <span style={{ fontSize: 11, color: "var(--muted)", fontWeight: 400 }}>
+              コンディションアンケートより
+            </span>
+          </h2>
+          {data.playerComments.length === 0 ? (
+            <p className="note">本日、コメント・痛みの申告はありません</p>
+          ) : (
+            data.playerComments.map((c, i) => (
+              <div key={i} className={`alert ${c.painFlag ? "red" : ""}`}>
+                <span>{c.painFlag ? "🩹" : "💬"}</span>
+                <div>
+                  <span className="who">
+                    #{c.playerNo} {c.playerName}
+                  </span>
+                  {c.painFlag && <span className="badge b-out" style={{ marginLeft: 8 }}>痛みの申告あり</span>}
+                  {c.text && <div style={{ marginTop: 4 }}>{c.text}</div>}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+
       <div className="card mt" style={{ overflowX: "auto" }}>
         <h2 className="section-title">
           デイリーレポート(選手別サマリー){" "}

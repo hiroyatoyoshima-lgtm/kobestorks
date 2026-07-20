@@ -22,6 +22,13 @@ export interface DashboardAlert {
   text: string;
 }
 
+export interface PlayerComment {
+  playerNo: number;
+  playerName: string;
+  painFlag: boolean;
+  text: string;
+}
+
 export interface DashboardData {
   date: string;
   dayType: ReturnType<typeof dayType>;
@@ -41,6 +48,7 @@ export interface DashboardData {
   teamLoadSeries: { aal: number[]; srpe: number[] };
   wellnessSeries: { distance: number[]; fatigue: number[] };
   alerts: DashboardAlert[];
+  playerComments: PlayerComment[] | null;
   dailyTable: {
     no: number;
     name: string;
@@ -114,6 +122,16 @@ export async function getDashboardData(date: string): Promise<DashboardData> {
     wellnessDelta = `${wellnessUp ? "▲" : "▼"} 前日比 ${wellnessUp ? "+" : "-"}0.${1 + (seed % 4)}`;
     surveyRate = `${9 + (seed % 3)}/${PLAYERS.length}`;
   }
+
+  // コメント・痛み申告があった選手だけ抜き出す(Supabase未接続時は null = 非表示)
+  const playerComments: PlayerComment[] | null = wellnessToday
+    ? [...wellnessToday.values()]
+        .filter((w) => w.painFlag || w.comment.trim() !== "")
+        .map((w) => {
+          const p = PLAYERS.find((pl) => pl.playerId === w.playerId)!;
+          return { playerNo: p.no, playerName: p.nameJa, painFlag: w.painFlag, text: w.comment };
+        })
+    : null;
 
   const fatigueSeries = days.map((d, i) => {
     const rows = wellnessRange?.get(d);
@@ -189,6 +207,7 @@ export async function getDashboardData(date: string): Promise<DashboardData> {
       fatigue: fatigueSeries,
     },
     alerts,
+    playerComments,
     dailyTable,
     comment: COMMENT_TEMPLATES[seed % COMMENT_TEMPLATES.length],
     usingRealData: anyRealLoad || !!wellnessToday,
