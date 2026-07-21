@@ -4,6 +4,7 @@ import { acwrBadgeClass, computeAlerts, getEffectiveDailyLoad, targetAal } from 
 import { DEFAULT_SETTINGS } from "../settings";
 import { compositeScore, getTeamWellnessForDate, getTeamWellnessRange } from "./wellness-repo";
 import { getDailyComment } from "./daily-comment-repo";
+import { getTeamSettings } from "./settings-repo";
 
 export function todayISO(): string {
   return toISO(new Date());
@@ -76,7 +77,9 @@ export async function getDashboardData(date: string): Promise<DashboardData> {
   const partCount = PLAYERS.filter((p) => p.status === "part").length;
   const outCount = PLAYERS.filter((p) => p.status === "out").length;
 
-  const loads = PLAYERS.map((p) => ({ p, load: getEffectiveDailyLoad(p, date, dt) }));
+  const { settings } = await getTeamSettings();
+
+  const loads = PLAYERS.map((p) => ({ p, load: getEffectiveDailyLoad(p, date, dt, settings) }));
   const anyRealLoad = loads.some(({ load }) => load.isReal);
 
   const teamAal = anyRealLoad
@@ -147,7 +150,7 @@ export async function getDashboardData(date: string): Promise<DashboardData> {
   let alerts: DashboardAlert[];
   if (anyRealLoad) {
     // Kinexon実データが1件でもあれば、§6のACWRロジックに基づく実アラートに切り替える
-    alerts = computeAlerts(PLAYERS, date).map((a) => {
+    alerts = computeAlerts(PLAYERS, date, settings).map((a) => {
       const p = PLAYERS.find((pl) => pl.playerId === a.playerId)!;
       return {
         icon: a.severity === "alert" ? "🔴" : "🟡",
@@ -182,7 +185,7 @@ export async function getDashboardData(date: string): Promise<DashboardData> {
     minsLabel: load.deficitLoad < 0 ? `${load.deficitMin}min` : "0min",
     intensity: load.intensityBand,
     acwr: load.acwr.toFixed(2),
-    acwrBadge: acwrBadgeClass(load.acwr),
+    acwrBadge: acwrBadgeClass(load.acwr, settings),
   }));
 
   return {
