@@ -1,7 +1,3 @@
-"use client";
-
-import { useState } from "react";
-
 export interface CalendarEntry {
   menu: string;
   staff: string;
@@ -23,8 +19,6 @@ export default function PlayerCareCalendar({
   month: number;
   careByDate: Record<string, CalendarEntry[]>;
 }) {
-  const [selected, setSelected] = useState<string | null>(null);
-
   const firstOfMonth = new Date(year, month - 1, 1);
   const daysInMonth = new Date(year, month, 0).getDate();
   const startOffset = firstOfMonth.getDay(); // 0=日
@@ -44,8 +38,6 @@ export default function PlayerCareCalendar({
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   })();
-
-  const selectedEntries = selected ? careByDate[selected] : undefined;
 
   return (
     <div className="card">
@@ -67,59 +59,53 @@ export default function PlayerCareCalendar({
           const entries = careByDate[key];
           const hasCare = !!entries && entries.length > 0;
           const isToday = key === todayKey;
-          const isSelected = key === selected;
           return (
-            <button
+            <div
               key={i}
-              type="button"
-              onClick={() => hasCare && setSelected(isSelected ? null : key)}
               style={{
-                position: "relative",
-                aspectRatio: "1",
+                minHeight: 74,
                 borderRadius: 8,
                 border: isToday ? "1.5px solid var(--green)" : "1px solid var(--border-soft)",
-                background: isSelected ? "var(--green-soft)" : hasCare ? "var(--panel2)" : "transparent",
-                cursor: hasCare ? "pointer" : "default",
-                color: "var(--text)",
-                fontSize: 11.5,
-                fontFamily: "var(--font-num)",
-                padding: 0,
+                background: hasCare ? "var(--green-soft)" : "transparent",
+                padding: "4px 5px",
+                display: "flex",
+                flexDirection: "column",
+                gap: 2,
+                overflow: "hidden",
               }}
             >
-              {day}
-              {hasCare && (
+              <span
+                style={{
+                  fontSize: 11,
+                  fontFamily: "var(--font-num)",
+                  color: hasCare ? "var(--green-deep)" : "var(--muted)",
+                  fontWeight: isToday ? 700 : 400,
+                }}
+              >
+                {day}
+              </span>
+              {entries?.map((e, idx) => (
                 <span
+                  key={idx}
+                  title={`${e.menu}${e.staff ? " ・" + e.staff : ""}`}
                   style={{
-                    position: "absolute",
-                    bottom: 3,
-                    left: "50%",
-                    transform: "translateX(-50%)",
-                    width: 5,
-                    height: 5,
-                    borderRadius: "50%",
-                    background: "var(--green)",
+                    fontSize: 10,
+                    lineHeight: 1.25,
+                    color: "var(--green-deep)",
+                    fontWeight: 600,
+                    display: "-webkit-box",
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: "vertical",
+                    overflow: "hidden",
                   }}
-                />
-              )}
-            </button>
+                >
+                  {e.menu}
+                </span>
+              ))}
+            </div>
           );
         })}
       </div>
-
-      {selected && selectedEntries && (
-        <div className="mt" style={{ fontSize: 12.5, background: "var(--panel2)", borderRadius: 8, padding: "8px 10px" }}>
-          <b>
-            {selected.slice(5).replace("-", "/")}
-          </b>
-          {selectedEntries.map((e, i) => (
-            <div key={i} style={{ marginTop: 4, color: "var(--soft)" }}>
-              {e.menu}
-              {e.staff && <span style={{ color: "var(--muted)" }}> ・{e.staff}</span>}
-              {e.done && <span className="badge b-ok" style={{ marginLeft: 6 }}>実施済</span>}
-            </div>
-          ))}
-        </div>
-      )}
     </div>
   );
 }

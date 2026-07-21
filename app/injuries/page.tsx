@@ -5,7 +5,7 @@ import InjuryTable from "@/components/InjuryTable";
 import InjuryForm from "@/components/InjuryForm";
 import CareChecklist from "@/components/CareChecklist";
 import CareForm from "@/components/CareForm";
-import PlayerCareCalendar, { type CalendarEntry } from "@/components/PlayerCareCalendar";
+import type { CalendarEntry } from "@/components/PlayerCareCalendar";
 
 // Supabase/ローカルstoreの最新データを毎回取得する(ビルド時にスナップショット固定させない)
 export const dynamic = "force-dynamic";
@@ -33,7 +33,7 @@ export default async function InjuriesPage() {
     };
   });
 
-  // 選手ごとのケア実施カレンダー(今月分)
+  // 選手ごとのケア実施カレンダー(今月分)。選手名クリックでInjuryTable内に展開表示する。
   const now = new Date();
   const year = now.getFullYear();
   const month = now.getMonth() + 1;
@@ -41,7 +41,16 @@ export default async function InjuriesPage() {
   const monthEnd = `${year}-${String(month).padStart(2, "0")}-${String(new Date(year, month, 0).getDate()).padStart(2, "0")}`;
 
   const injuredPlayerIds = [...new Set(injuries.map((i) => i.playerId))];
-  const careCalendar = isLive ? await getCareCalendar(injuredPlayerIds, monthStart, monthEnd) : null;
+  const injuredPlayers = injuredPlayerIds
+    .map((id) => playerById.get(id))
+    .filter((p): p is (typeof PLAYERS)[number] => !!p);
+  const careCalendarRaw = isLive ? await getCareCalendar(injuredPlayerIds, monthStart, monthEnd) : null;
+
+  const careCalendar: Record<string, Record<string, CalendarEntry[]>> | undefined = careCalendarRaw
+    ? Object.fromEntries(
+        [...careCalendarRaw.entries()].map(([playerId, byDateMap]) => [playerId, Object.fromEntries(byDateMap)])
+      )
+    : undefined;
 
   return (
     <>
@@ -50,7 +59,14 @@ export default async function InjuriesPage() {
         {isLive && <span className="badge b-ok">Supabase接続中</span>}
       </h2>
       <div className="card" style={{ overflowX: "auto" }}>
-        <InjuryTable rows={injuryRows} editable={isLive} />
+        <InjuryTable
+          rows={injuryRows}
+          editable={isLive}
+          careCalendar={careCalendar}
+          calendarYear={year}
+          calendarMonth={month}
+        />
+        {careCalendar && <p className="note mt">選手名をクリックすると、今月のケア実施カレンダーが表示されます。</p>}
       </div>
 
       {isLive ? (
@@ -59,35 +75,6 @@ export default async function InjuriesPage() {
         </div>
       ) : (
         <p className="note mt">Supabase未接続のため、新規登録・編集はできません(表示のみ)。</p>
-      )}
-
-      {careCalendar && injuredPlayerIds.length > 0 && (
-        <div className="mt">
-          <h2 className="section-title">
-            選手別 ケア実施カレンダー{" "}
-            <span style={{ fontSize: 11, color: "var(--muted)", fontWeight: 400 }}>
-              {year}年{month}月・マークのある日をクリックで内容表示
-            </span>
-          </h2>
-          <div className="grid two">
-            {injuredPlayerIds.map((playerId) => {
-              const p = playerById.get(playerId);
-              if (!p) return null;
-              const byDateMap = careCalendar.get(playerId) ?? new Map();
-              const careByDate: Record<string, CalendarEntry[]> = Object.fromEntries(byDateMap);
-              return (
-                <PlayerCareCalendar
-                  key={playerId}
-                  playerNo={p.no}
-                  playerName={p.nameJa}
-                  year={year}
-                  month={month}
-                  careByDate={careByDate}
-                />
-              );
-            })}
-          </div>
-        </div>
       )}
 
       <div className="card mt">
@@ -100,7 +87,11 @@ export default async function InjuriesPage() {
         </p>
         {isLive && (
           <div className="mt">
-            <CareForm players={PLAYERS} />
+            {injuredPlayers.length > 0 ? (
+              <CareForm players={injuredPlayers} />
+            ) : (
+              <p className="note">現在、怪我人登録がいないためケア予定を追加できません。</p>
+            )}
           </div>
         )}
       </div>

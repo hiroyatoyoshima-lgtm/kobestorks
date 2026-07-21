@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Injury } from "@/lib/types";
+import PlayerCareCalendar, { type CalendarEntry } from "./PlayerCareCalendar";
 
 const STATUS_BADGE: Record<string, string> = {
   out: "b-out",
@@ -17,9 +18,34 @@ const STATUS_TEXT: Record<string, string> = {
 
 type Row = Injury & { no: number; name: string };
 
-export default function InjuryTable({ rows, editable = false }: { rows: Row[]; editable?: boolean }) {
+export default function InjuryTable({
+  rows,
+  editable = false,
+  careCalendar,
+  calendarYear,
+  calendarMonth,
+}: {
+  rows: Row[];
+  editable?: boolean;
+  careCalendar?: Record<string, Record<string, CalendarEntry[]>>;
+  calendarYear?: number;
+  calendarMonth?: number;
+}) {
   const router = useRouter();
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+
+  function toggle(playerId: string) {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(playerId)) next.delete(playerId);
+      else next.add(playerId);
+      return next;
+    });
+  }
+
+  const colSpan = 6 + (editable ? 1 : 0);
+  const canShowCalendar = !!careCalendar && !!calendarYear && !!calendarMonth;
 
   return (
     <table>
@@ -39,27 +65,71 @@ export default function InjuryTable({ rows, editable = false }: { rows: Row[]; e
           editingId === r.injuryId ? (
             <EditRow key={r.injuryId} row={r} onDone={() => { setEditingId(null); router.refresh(); }} onCancel={() => setEditingId(null)} />
           ) : (
-            <tr key={r.injuryId}>
-              <td>
-                <b>
-                  #{r.no} {r.name}
-                </b>
-              </td>
-              <td>{r.diagnosis}</td>
-              <td>
-                <span className={`badge ${STATUS_BADGE[r.status]}`}>{STATUS_TEXT[r.status]}</span>
-              </td>
-              <td>{r.onsetDate}</td>
-              <td>{r.rtpTargetDate ?? "—"}</td>
-              <td>{r.rtpPhase}</td>
-              {editable && (
+            <>
+              <tr key={r.injuryId}>
                 <td>
-                  <button className="back" style={{ margin: 0 }} onClick={() => setEditingId(r.injuryId)}>
-                    編集
-                  </button>
+                  {canShowCalendar ? (
+                    <button
+                      type="button"
+                      onClick={() => toggle(r.playerId)}
+                      style={{
+                        background: "none",
+                        border: "none",
+                        padding: 0,
+                        cursor: "pointer",
+                        color: "var(--text)",
+                        fontWeight: 700,
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 5,
+                      }}
+                    >
+                      <span style={{ fontSize: 10, color: "var(--green)" }}>
+                        {expandedIds.has(r.playerId) ? "▼" : "▶"}
+                      </span>
+                      #{r.no} {r.name}
+                      <span
+                        title="クリックでケア実施カレンダーを表示"
+                        style={{ fontSize: 12, opacity: 0.7 }}
+                      >
+                        📅
+                      </span>
+                    </button>
+                  ) : (
+                    <b>
+                      #{r.no} {r.name}
+                    </b>
+                  )}
                 </td>
+                <td>{r.diagnosis}</td>
+                <td>
+                  <span className={`badge ${STATUS_BADGE[r.status]}`}>{STATUS_TEXT[r.status]}</span>
+                </td>
+                <td>{r.onsetDate}</td>
+                <td>{r.rtpTargetDate ?? "—"}</td>
+                <td>{r.rtpPhase}</td>
+                {editable && (
+                  <td>
+                    <button className="back" style={{ margin: 0 }} onClick={() => setEditingId(r.injuryId)}>
+                      編集
+                    </button>
+                  </td>
+                )}
+              </tr>
+              {canShowCalendar && expandedIds.has(r.playerId) && (
+                <tr>
+                  <td colSpan={colSpan} style={{ background: "var(--bg-tint)", padding: 12 }}>
+                    <PlayerCareCalendar
+                      playerNo={r.no}
+                      playerName={r.name}
+                      year={calendarYear!}
+                      month={calendarMonth!}
+                      careByDate={careCalendar![r.playerId] ?? {}}
+                    />
+                  </td>
+                </tr>
               )}
-            </tr>
+            </>
           )
         )}
       </tbody>

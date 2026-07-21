@@ -210,7 +210,10 @@ export async function getDashboardData(date: string): Promise<DashboardData> {
     playerComments,
     dailyTable,
     comment: COMMENT_TEMPLATES[seed % COMMENT_TEMPLATES.length],
-    usingRealData: anyRealLoad || !!wellnessToday,
+    // このフラグは「デイリーレポート」表内のKinexon由来の数値(Total AAL・ACWR等)が
+    // 実データかどうかだけを表す。wellnessToday は空Mapでも truthy になるため含めない
+    // (Supabaseに繋がっているだけでKinexon実データ扱いになるバグがあったため修正)。
+    usingRealData: anyRealLoad,
   };
 }
 
