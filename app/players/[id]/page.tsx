@@ -1,5 +1,7 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+import { getCurrentUser } from "@/lib/auth/session";
+import { VIEW_PLAYERS, hasRole, isPlayerRole } from "@/lib/auth/permissions";
 import {
   aalTrend,
   careHistory,
@@ -32,6 +34,17 @@ export default async function PlayerDetailPage({
   const { id } = await params;
   const player = getPlayer(id);
   if (!player) notFound();
+
+  const user = await getCurrentUser();
+  if (isPlayerRole(user)) {
+    if (user!.playerId !== id) redirect(user!.playerId ? `/players/${user!.playerId}` : "/survey");
+  } else if (!hasRole(user, VIEW_PLAYERS)) {
+    return (
+      <div className="card" style={{ maxWidth: 480 }}>
+        <p className="note">この画面を見る権限がありません。</p>
+      </div>
+    );
+  }
 
   const injury = getInjuryForPlayer(player.playerId);
   const { latest: ib, trend: ibTrend, isReal: inbodyIsReal, measuredDate } = await getInbodyData(player);

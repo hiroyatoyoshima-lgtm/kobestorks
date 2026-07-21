@@ -1,5 +1,6 @@
 import { createAdminClient, withTimeout } from "@/lib/supabase/admin";
 import { getDefaultTeamId } from "@/lib/supabase/team";
+import { EDIT_INJURIES, requireRole } from "@/lib/auth/permissions";
 
 interface CreateBody {
   time: string;
@@ -11,6 +12,7 @@ interface CreateBody {
 // 本日のケア予定を新規登録
 export async function POST(request: Request) {
   try {
+    await requireRole(EDIT_INJURIES);
     const body = (await request.json()) as CreateBody;
 
     const teamId = await getDefaultTeamId();
@@ -43,6 +45,7 @@ export async function POST(request: Request) {
 // 実施チェックの更新
 export async function PATCH(request: Request) {
   try {
+    await requireRole(EDIT_INJURIES);
     const { careId, done } = (await request.json()) as { careId: string; done: boolean };
     const supabase = createAdminClient();
     const { error } = await withTimeout(supabase.from("care_log").update({ done }).eq("care_id", careId));

@@ -108,7 +108,32 @@ export function acwrBadgeClass(acwr: number, settings: TeamSettings = DEFAULT_SE
   return "b-soon";
 }
 
-// 選手・日付ごとのアラート判定(§6)。ウェルネス個人平均比・ACWR・負荷急増の3種。
+// 負荷急増アラート(§6: load_spike_pct)。当日のTotal AALが、直近日平均に対してどれだけ急増したか。
+// Kinexon実データ(fileStore)が3日分以上無ければ判定しない(誤検知防止)。
+export function loadSpikeAlert(player: Player, date: string, settings: TeamSettings = DEFAULT_SETTINGS): AlertItem | null {
+  const recent = getRecentTotalAal(player.playerId, date, 8);
+  const todayRow = recent.find((r) => r.date === date);
+  if (!todayRow) return null;
+  const priorRows = recent.filter((r) => r.date !== date);
+  if (priorRows.length < 3) return null;
+
+  const avgPrior = priorRows.reduce((s, r) => s + r.totalAal, 0) / priorRows.length;
+  if (avgPrior <= 0) return null;
+
+  const increasePct = ((todayRow.totalAal - avgPrior) / avgPrior) * 100;
+  if (increasePct < settings.loadSpikePct) return null;
+
+  return {
+    playerId: player.playerId,
+    date,
+    type: "LOAD_SPIKE",
+    severity: "alert",
+    value: `+${Math.round(increasePct)}%`,
+    message: `直近平均に対して負荷が+${Math.round(increasePct)}%(基準${settings.loadSpikePct}%超過)。リカバリー優先を推奨`,
+  };
+}
+
+// 選手・日付ごとのアラート判定(§6)。ACWR・負荷急増の2種(ウェルネスは実データが別経路のためdashboard.tsで判定)。
 export function computeAlerts(
   players: Player[],
   date: string,
@@ -136,6 +161,9 @@ export function computeAlerts(
         message: `急性:慢性負荷比 ${acwr.toFixed(2)}(注意閾値${settings.acwrWarn}超過)。モニタリング推奨`,
       });
     }
+
+    const spike = loadSpikeAlert(p, date, settings);
+    if (spike) alerts.push(spike);
   }
   return alerts;
 }

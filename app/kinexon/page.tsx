@@ -1,10 +1,21 @@
 import { listSyncLogs } from "@/lib/store/fileStore";
 import KinexonImportForm from "@/components/KinexonImportForm";
 import InbodyImportForm from "@/components/InbodyImportForm";
+import { getCurrentUser } from "@/lib/auth/session";
+import { ADMIN_ONLY, hasRole } from "@/lib/auth/permissions";
 
 export const dynamic = "force-dynamic";
 
-export default function KinexonPage() {
+export default async function KinexonPage() {
+  const user = await getCurrentUser();
+  if (!hasRole(user, ADMIN_ONLY)) {
+    return (
+      <div className="card" style={{ maxWidth: 480 }}>
+        <p className="note">この画面はS&Cコーチのみ利用できます。</p>
+      </div>
+    );
+  }
+
   const logs = listSyncLogs();
 
   return (

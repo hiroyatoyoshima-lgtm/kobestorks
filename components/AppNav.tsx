@@ -56,22 +56,58 @@ const ICONS: Record<string, React.ReactNode> = {
   ),
 };
 
-const NAV_ITEMS = [
-  { href: "/", icon: "dashboard", label: "ホーム" },
-  { href: "/players", icon: "players", label: "選手" },
-  { href: "/injuries", icon: "injuries", label: "怪我・ケア" },
-  { href: "/nutrition", icon: "nutrition", label: "栄養" },
-  { href: "/survey", icon: "survey", label: "入力" },
-  { href: "/kinexon", icon: "kinexon", label: "取込み" },
-  { href: "/settings", icon: "settings", label: "設定" },
+type Role = "admin" | "medical" | "nutrition" | "coach" | "player";
+
+// §3の権限表に対応するナビ項目ごとの許可ロール。"all"はログイン済みなら誰でも。
+const NAV_ITEMS: { href: string; icon: string; label: string; roles: Role[] | "all" }[] = [
+  { href: "/", icon: "dashboard", label: "ホーム", roles: ["admin", "medical", "nutrition", "coach"] },
+  { href: "/players", icon: "players", label: "選手", roles: ["admin", "medical", "coach"] },
+  { href: "/injuries", icon: "injuries", label: "怪我・ケア", roles: ["admin", "medical", "coach"] },
+  { href: "/nutrition", icon: "nutrition", label: "栄養", roles: ["admin", "medical", "nutrition"] },
+  { href: "/survey", icon: "survey", label: "入力", roles: ["admin", "player"] },
+  { href: "/kinexon", icon: "kinexon", label: "取込み", roles: ["admin"] },
+  { href: "/settings", icon: "settings", label: "設定", roles: ["admin"] },
 ];
 
-export default function AppNav() {
+export default function AppNav({
+  role,
+  isSuperAdmin,
+  playerId,
+}: {
+  role: Role | null;
+  isSuperAdmin: boolean;
+  playerId: string | null;
+}) {
   const pathname = usePathname();
+
+  // 選手roleは自分のページ+コンディション入力の2つだけの専用ナビにする。
+  if (role === "player" && !isSuperAdmin) {
+    const items = [
+      { href: playerId ? `/players/${playerId}` : "/survey", icon: "players", label: "マイページ" },
+      { href: "/survey", icon: "survey", label: "入力" },
+    ];
+    return (
+      <nav className="rail">
+        {items.map((item) => {
+          const active = pathname.startsWith(item.href);
+          return (
+            <Link key={item.href} href={item.href} className={active ? "active" : ""}>
+              {ICONS[item.icon]}
+              <span>{item.label}</span>
+            </Link>
+          );
+        })}
+      </nav>
+    );
+  }
+
+  const visibleItems = NAV_ITEMS.filter(
+    (item) => isSuperAdmin || item.roles === "all" || (role && item.roles.includes(role))
+  );
 
   return (
     <nav className="rail">
-      {NAV_ITEMS.map((item) => {
+      {visibleItems.map((item) => {
         const active =
           item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
         return (

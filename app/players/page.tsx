@@ -1,5 +1,8 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { PLAYERS, STATUS_LABEL } from "@/lib/data/seed";
+import { getCurrentUser } from "@/lib/auth/session";
+import { VIEW_PLAYERS, hasRole, isPlayerRole } from "@/lib/auth/permissions";
 
 // Kinexon取込み(ローカルstore)の最新反映を毎回見るため静的化しない
 export const dynamic = "force-dynamic";
@@ -11,7 +14,19 @@ const STATUS_DOT: Record<string, string> = {
   out: "var(--red)",
 };
 
-export default function PlayersPage() {
+export default async function PlayersPage() {
+  const user = await getCurrentUser();
+  if (isPlayerRole(user)) {
+    redirect(user!.playerId ? `/players/${user!.playerId}` : "/survey");
+  }
+  if (!hasRole(user, VIEW_PLAYERS)) {
+    return (
+      <div className="card" style={{ maxWidth: 480 }}>
+        <p className="note">この画面を見る権限がありません。</p>
+      </div>
+    );
+  }
+
   return (
     <>
       <h2 className="section-title">

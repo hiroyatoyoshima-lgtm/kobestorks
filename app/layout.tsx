@@ -1,17 +1,23 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import AppNav from "@/components/AppNav";
+import UserMenu from "@/components/UserMenu";
+import LogoutButton from "@/components/LogoutButton";
+import { getCurrentUser } from "@/lib/auth/session";
 
 export const metadata: Metadata = {
   title: "STORKS Performance Hub",
   description: "神戸ストークス パフォーマンスチーム データ管理",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const user = await getCurrentUser();
+  const unregistered = !!user && !user.role && !user.isSuperAdmin;
+
   return (
     <html lang="ja">
       <head>
@@ -23,17 +29,39 @@ export default function RootLayout({
         />
       </head>
       <body>
-        <AppNav />
-        <div className="app-body">
-          <header className="topbar">
-            <div className="logo">KS</div>
-            <div>
-              <h1>STORKS Performance Hub</h1>
-              <div className="sub">神戸ストークス パフォーマンスチーム データ管理</div>
+        {unregistered ? (
+          <div style={{ display: "flex", minHeight: "100vh", alignItems: "center", justifyContent: "center", padding: 24 }}>
+            <div className="card" style={{ maxWidth: 420, width: "100%", textAlign: "center" }}>
+              <h1 style={{ fontSize: 16, fontWeight: 700, marginBottom: 10 }}>アクセス権限がありません</h1>
+              <p className="note" style={{ marginBottom: 4 }}>
+                <b>{user!.email}</b> はまだ登録されていません。
+              </p>
+              <p className="note" style={{ marginBottom: 16 }}>
+                管理者に連絡して、アカウントを登録してもらってください。
+              </p>
+              <LogoutButton />
             </div>
-          </header>
-          <main>{children}</main>
-        </div>
+          </div>
+        ) : (
+          <>
+            <AppNav
+              role={user?.role ?? null}
+              isSuperAdmin={user?.isSuperAdmin ?? false}
+              playerId={user?.playerId ?? null}
+            />
+            <div className="app-body">
+              <header className="topbar">
+                <div className="logo">KS</div>
+                <div>
+                  <h1>STORKS Performance Hub</h1>
+                  <div className="sub">神戸ストークス パフォーマンスチーム データ管理</div>
+                </div>
+                {user && <UserMenu email={user.email} role={user.role} />}
+              </header>
+              <main>{children}</main>
+            </div>
+          </>
+        )}
       </body>
     </html>
   );

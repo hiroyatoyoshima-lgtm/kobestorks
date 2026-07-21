@@ -1,5 +1,6 @@
 import { createAdminClient, withTimeout } from "@/lib/supabase/admin";
 import { getDefaultTeamId } from "@/lib/supabase/team";
+import { EDIT_INJURIES, requireRole } from "@/lib/auth/permissions";
 
 interface CreateBody {
   playerId: string;
@@ -18,6 +19,7 @@ interface CreateBody {
 // 新規登録(§5.4: admin/medicalは編集可 の「新規」側)
 export async function POST(request: Request) {
   try {
+    await requireRole(EDIT_INJURIES);
     const body = (await request.json()) as CreateBody;
 
     const teamId = await getDefaultTeamId();
@@ -63,6 +65,7 @@ interface UpdateBody {
 // 既存の怪我レコードの編集(§5.4: admin/medicalは編集可)
 export async function PATCH(request: Request) {
   try {
+    await requireRole(EDIT_INJURIES);
     const body = (await request.json()) as UpdateBody;
     const supabase = createAdminClient();
 

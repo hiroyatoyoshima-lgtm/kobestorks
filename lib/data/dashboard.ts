@@ -1,8 +1,9 @@
+import type { Player } from "../types";
 import { PLAYERS, ALERT_MESSAGE_TEMPLATES, COMMENT_TEMPLATES, INJURIES } from "./seed";
 import { dateSeed, last14Days, labelMD, seededScale5, seededSeries, dayType, toISO } from "./rng";
 import { acwrBadgeClass, computeAlerts, getEffectiveDailyLoad, targetAal } from "../calc";
-import { DEFAULT_SETTINGS } from "../settings";
-import { compositeScore, getTeamWellnessForDate, getTeamWellnessRange } from "./wellness-repo";
+import { DEFAULT_SETTINGS, type TeamSettings } from "../settings";
+import { compositeScore, getTeamWellnessForDate, getTeamWellnessRange, type WellnessRow } from "./wellness-repo";
 import { getDailyComment } from "./daily-comment-repo";
 import { getTeamSettings } from "./settings-repo";
 
@@ -14,6 +15,76 @@ function prevDayISO(iso: string): string {
   const d = new Date(iso + "T00:00:00");
   d.setDate(d.getDate() - 1);
   return toISO(d);
+}
+
+function daysBeforeISO(iso: string, n: number): string {
+  const d = new Date(iso + "T00:00:00");
+  d.setDate(d.getDate() - n);
+  return toISO(d);
+}
+
+const WELLNESS_FIELDS: { key: "sleepQuality" | "fatigue" | "soreness" | "stress"; label: string }[] = [
+  { key: "sleepQuality", label: "睡眠の質" },
+  { key: "fatigue", label: "疲労感" },
+  { key: "soreness", label: "筋肉痛" },
+  { key: "stress", label: "ストレス" },
+];
+
+// ウェルネス悪化アラート(§6: wellness_warn_pct/wellness_alert_pct)。
+// 個人の直近 wellnessWindowDays 平均(当日を除く)に対して、当日値がどれだけ悪化したかを
+// 4項目それぞれ+4項目合計の計5系統で判定する。個人の履歴が wellnessMinDays 未満の場合は誤検知防止のため判定しない。
+function wellnessAlertsForPlayer(
+  p: Player,
+  wellnessRange: Map<string, WellnessRow[]>,
+  date: string,
+  settings: TeamSettings
+): DashboardAlert[] {
+  const todayRow = wellnessRange.get(date)?.find((w) => w.playerId === p.playerId);
+  if (!todayRow) return [];
+
+  const cutoff = daysBeforeISO(date, settings.wellnessWindowDays);
+  const priorRows: WellnessRow[] = [];
+  for (const [d, rows] of wellnessRange.entries()) {
+    if (d === date || d < cutoff || d > date) continue;
+    const row = rows.find((w) => w.playerId === p.playerId);
+    if (row) priorRows.push(row);
+  }
+  if (priorRows.length < settings.wellnessMinDays) return [];
+
+  const results: DashboardAlert[] = [];
+  const pushIfWorsened = (label: string, baseline: number, todayVal: number) => {
+    if (baseline <= 0) return;
+    const worsenPct = ((baseline - todayVal) / baseline) * 100;
+    if (worsenPct >= settings.wellnessAlertPct) {
+      results.push({
+        icon: "🔴",
+        cls: "red",
+        playerNo: p.no,
+        playerName: p.nameJa,
+        text: `${label}が個人平均比${Math.round(worsenPct)}%悪化(基準${settings.wellnessAlertPct}%超過)。要フォロー`,
+      });
+    } else if (worsenPct >= settings.wellnessWarnPct) {
+      results.push({
+        icon: "🟡",
+        cls: "",
+        playerNo: p.no,
+        playerName: p.nameJa,
+        text: `${label}が個人平均比${Math.round(worsenPct)}%悪化(注意閾値${settings.wellnessWarnPct}%超過)。モニタリング推奨`,
+      });
+    }
+  };
+
+  for (const f of WELLNESS_FIELDS) {
+    const baseline = priorRows.reduce((s, r) => s + r[f.key], 0) / priorRows.length;
+    pushIfWorsened(f.label, baseline, todayRow[f.key]);
+  }
+
+  const baselineTotal =
+    priorRows.reduce((s, r) => s + r.sleepQuality + r.fatigue + r.soreness + r.stress, 0) / priorRows.length;
+  const todayTotal = todayRow.sleepQuality + todayRow.fatigue + todayRow.soreness + todayRow.stress;
+  pushIfWorsened("ウェルネス合計", baselineTotal, todayTotal);
+
+  return results;
 }
 
 export interface DashboardAlert {
@@ -147,19 +218,31 @@ export async function getDashboardData(date: string): Promise<DashboardData> {
     return seededScale5(9, 3.4, days, seed)[i];
   });
 
+  const hasRealWellnessToday = !!wellnessToday && wellnessToday.size > 0;
+
   let alerts: DashboardAlert[];
-  if (anyRealLoad) {
-    // Kinexon実データが1件でもあれば、§6のACWRロジックに基づく実アラートに切り替える
-    alerts = computeAlerts(PLAYERS, date, settings).map((a) => {
-      const p = PLAYERS.find((pl) => pl.playerId === a.playerId)!;
-      return {
-        icon: a.severity === "alert" ? "🔴" : "🟡",
-        cls: a.severity === "alert" ? "red" : "",
-        playerNo: p.no,
-        playerName: p.nameJa,
-        text: a.message,
-      };
-    });
+  if (anyRealLoad || hasRealWellnessToday) {
+    // Kinexon実データ・ウェルネス実データのどちらか1件でもあれば、§6の実アラート判定に切り替える
+    alerts = [];
+    if (anyRealLoad) {
+      alerts.push(
+        ...computeAlerts(PLAYERS, date, settings).map((a) => {
+          const p = PLAYERS.find((pl) => pl.playerId === a.playerId)!;
+          return {
+            icon: a.severity === "alert" ? "🔴" : "🟡",
+            cls: a.severity === "alert" ? "red" : "",
+            playerNo: p.no,
+            playerName: p.nameJa,
+            text: a.message,
+          } as DashboardAlert;
+        })
+      );
+    }
+    if (hasRealWellnessToday && wellnessRange) {
+      for (const p of PLAYERS) {
+        alerts.push(...wellnessAlertsForPlayer(p, wellnessRange, date, settings));
+      }
+    }
   } else {
     const alertCount = 2 + (seed % 2);
     alerts = [];

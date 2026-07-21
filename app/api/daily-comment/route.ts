@@ -1,5 +1,6 @@
 import { createAdminClient, withTimeout } from "@/lib/supabase/admin";
 import { getDefaultTeamId } from "@/lib/supabase/team";
+import { EDIT_DAILY_COMMENT, requireRole } from "@/lib/auth/permissions";
 
 interface Body {
   date: string;
@@ -10,6 +11,7 @@ interface Body {
 // S&Cコメントの登録・更新(§5.2: decisionsまたは専用列。ここではdaily_commentsに1日1件)
 export async function POST(request: Request) {
   try {
+    await requireRole(EDIT_DAILY_COMMENT);
     const body = (await request.json()) as Body;
 
     const teamId = await getDefaultTeamId();

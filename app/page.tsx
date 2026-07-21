@@ -1,14 +1,29 @@
+import { redirect } from "next/navigation";
 import { getDashboardData, todayISO } from "@/lib/data/dashboard";
 import DateNav from "@/components/DateNav";
 import TeamLoadChart from "@/components/charts/TeamLoadChart";
 import WellnessChart from "@/components/charts/WellnessChart";
 import DailyCommentEditor from "@/components/DailyCommentEditor";
+import { getCurrentUser } from "@/lib/auth/session";
+import { EDIT_DAILY_COMMENT, VIEW_DASHBOARD, hasRole, isPlayerRole } from "@/lib/auth/permissions";
 
 export default async function DashboardPage({
   searchParams,
 }: {
   searchParams: Promise<{ date?: string }>;
 }) {
+  const user = await getCurrentUser();
+  if (isPlayerRole(user)) {
+    redirect(user!.playerId ? `/players/${user!.playerId}` : "/survey");
+  }
+  if (!hasRole(user, VIEW_DASHBOARD)) {
+    return (
+      <div className="card" style={{ maxWidth: 480 }}>
+        <p className="note">この画面を見る権限がありません。</p>
+      </div>
+    );
+  }
+
   const { date: dateParam } = await searchParams;
   const date = dateParam || todayISO();
   const data = await getDashboardData(date);
@@ -167,7 +182,11 @@ export default async function DashboardPage({
             <span style={{ fontSize: 11, color: "var(--muted)", fontWeight: 400 }}>※内容はダミー</span>
           )}
         </h2>
-        <DailyCommentEditor date={data.date} initialComment={data.comment} editable={data.commentEditable} />
+        <DailyCommentEditor
+          date={data.date}
+          initialComment={data.comment}
+          editable={data.commentEditable && hasRole(user, EDIT_DAILY_COMMENT)}
+        />
       </div>
     </>
   );

@@ -1,5 +1,6 @@
 import { createAdminClient, withTimeout } from "@/lib/supabase/admin";
 import { getDefaultTeamId } from "@/lib/supabase/team";
+import { EDIT_NUTRITION, requireRole } from "@/lib/auth/permissions";
 
 interface NutritionBody {
   timing: string;
@@ -14,6 +15,7 @@ interface NutritionBody {
 
 export async function POST(request: Request) {
   try {
+    await requireRole(EDIT_NUTRITION);
     const body = (await request.json()) as NutritionBody;
 
     const teamId = await getDefaultTeamId();

@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { PLAYERS } from "@/lib/data/seed";
 import { getCareCalendar, getInjuriesPageData } from "@/lib/data/injuries-repo";
 import { todayISO } from "@/lib/data/dashboard";
@@ -6,14 +7,30 @@ import InjuryForm from "@/components/InjuryForm";
 import CareChecklist from "@/components/CareChecklist";
 import CareForm from "@/components/CareForm";
 import type { CalendarEntry } from "@/components/PlayerCareCalendar";
+import { getCurrentUser } from "@/lib/auth/session";
+import { EDIT_INJURIES, VIEW_INJURIES, hasRole, isPlayerRole } from "@/lib/auth/permissions";
 
 // Supabase/ローカルstoreの最新データを毎回取得する(ビルド時にスナップショット固定させない)
 export const dynamic = "force-dynamic";
 
 export default async function InjuriesPage() {
+  const user = await getCurrentUser();
+  if (isPlayerRole(user)) {
+    redirect(user!.playerId ? `/players/${user!.playerId}` : "/survey");
+  }
+  if (!hasRole(user, VIEW_INJURIES)) {
+    return (
+      <div className="card" style={{ maxWidth: 480 }}>
+        <p className="note">この画面を見る権限がありません。</p>
+      </div>
+    );
+  }
+  const canEdit = hasRole(user, EDIT_INJURIES);
+
   const playerById = new Map(PLAYERS.map((p) => [p.playerId, p]));
   const { injuries, careLogs, source } = await getInjuriesPageData(todayISO());
   const isLive = source === "supabase";
+  const editable = isLive && canEdit;
 
   const injuryRows = injuries.map((inj) => {
     const p = playerById.get(inj.playerId);
@@ -61,7 +78,7 @@ export default async function InjuriesPage() {
       <div className="card" style={{ overflowX: "auto" }}>
         <InjuryTable
           rows={injuryRows}
-          editable={isLive}
+          editable={editable}
           careCalendar={careCalendar}
           calendarYear={year}
           calendarMonth={month}
@@ -69,23 +86,25 @@ export default async function InjuriesPage() {
         {careCalendar && <p className="note mt">選手名をクリックすると、今月のケア実施カレンダーが表示されます。</p>}
       </div>
 
-      {isLive ? (
+      {editable ? (
         <div className="mt">
           <InjuryForm players={PLAYERS} />
         </div>
-      ) : (
+      ) : !isLive ? (
         <p className="note mt">Supabase未接続のため、新規登録・編集はできません(表示のみ)。</p>
+      ) : (
+        <p className="note mt">閲覧のみの権限です(新規登録・編集にはトレーナー以上の権限が必要です)。</p>
       )}
 
       <div className="card mt">
         <h2 className="section-title">本日のケア・治療スケジュール</h2>
-        <CareChecklist rows={careRows} persist={isLive} />
+        <CareChecklist rows={careRows} persist={editable} />
         <p className="note">
-          {isLive
+          {editable
             ? "✓を入れるとSupabaseのcare_logに保存されます。"
-            : "✓を入れると記録されます(現在はブラウザ内のみ保存。Supabase未接続のためダミー表示)"}
+            : "✓を入れても保存されません(閲覧のみの権限、またはSupabase未接続)。"}
         </p>
-        {isLive && (
+        {editable && (
           <div className="mt">
             {injuredPlayers.length > 0 ? (
               <CareForm players={injuredPlayers} />

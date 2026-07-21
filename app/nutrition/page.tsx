@@ -1,10 +1,26 @@
+import { redirect } from "next/navigation";
 import { getNutritionPageData } from "@/lib/data/nutrition-repo";
 import { todayISO } from "@/lib/data/dashboard";
 import NutritionForm from "@/components/NutritionForm";
+import { getCurrentUser } from "@/lib/auth/session";
+import { EDIT_NUTRITION, VIEW_NUTRITION, hasRole, isPlayerRole } from "@/lib/auth/permissions";
 
 export const dynamic = "force-dynamic";
 
 export default async function NutritionPage() {
+  const user = await getCurrentUser();
+  if (isPlayerRole(user)) {
+    redirect(user!.playerId ? `/players/${user!.playerId}` : "/survey");
+  }
+  if (!hasRole(user, VIEW_NUTRITION)) {
+    return (
+      <div className="card" style={{ maxWidth: 480 }}>
+        <p className="note">この画面を見る権限がありません。</p>
+      </div>
+    );
+  }
+  const canEdit = hasRole(user, EDIT_NUTRITION);
+
   const { reports, source } = await getNutritionPageData(todayISO());
   const pre = reports.find((n) => n.timing === "練習前");
   const post = reports.find((n) => n.timing === "練習後");
@@ -41,7 +57,7 @@ export default async function NutritionPage() {
           </div>
         ))}
       </div>
-      <NutritionForm />
+      {canEdit ? <NutritionForm /> : <p className="note mt">閲覧のみの権限です。</p>}
     </>
   );
 }
