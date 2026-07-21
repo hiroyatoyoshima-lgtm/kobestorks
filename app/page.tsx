@@ -2,6 +2,7 @@ import { getDashboardData, todayISO } from "@/lib/data/dashboard";
 import DateNav from "@/components/DateNav";
 import TeamLoadChart from "@/components/charts/TeamLoadChart";
 import WellnessChart from "@/components/charts/WellnessChart";
+import DailyCommentEditor from "@/components/DailyCommentEditor";
 
 export default async function DashboardPage({
   searchParams,
@@ -160,8 +161,13 @@ export default async function DashboardPage({
       </div>
 
       <div className="card mt">
-        <h2 className="section-title">S&Cコメント</h2>
-        <p style={{ fontSize: 13.5, lineHeight: 1.8, color: "var(--text)" }}>{data.comment}</p>
+        <h2 className="section-title">
+          S&Cコメント{" "}
+          {!data.commentEditable && (
+            <span style={{ fontSize: 11, color: "var(--muted)", fontWeight: 400 }}>※内容はダミー</span>
+          )}
+        </h2>
+        <DailyCommentEditor date={data.date} initialComment={data.comment} editable={data.commentEditable} />
       </div>
     </>
   );

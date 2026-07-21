@@ -3,6 +3,9 @@ import { last14Days, labelMD, seededSeries } from "./rng";
 import type { Player } from "../types";
 import { effectiveTotalAal } from "../calc";
 import { compositeScore, getPlayerWellnessRange } from "./wellness-repo";
+import { createAdminClient, withTimeout } from "../supabase/admin";
+import { getDefaultTeamId } from "../supabase/team";
+import { getInbodyHistory } from "./inbody-repo";
 
 export function getPlayer(playerId: string): Player | undefined {
   return PLAYERS.find((p) => p.playerId === playerId);
@@ -12,7 +15,21 @@ export function getInjuryForPlayer(playerId: string) {
   return INJURIES.find((i) => i.playerId === playerId);
 }
 
-export function inbodyLatest(player: Player) {
+export interface InbodyLatest {
+  weightKg: number;
+  muscleMassKg: number;
+  fatMassKg: number;
+  fatPct: number;
+}
+
+export interface InbodyTrendData {
+  labels: string[];
+  weightKg: number[];
+  muscleMassKg: number[];
+  fatPct: number[];
+}
+
+function dummyInbodyLatest(player: Player): InbodyLatest {
   const w = +(85 + ((player.no * 37) % 25)).toFixed(1);
   const fatPct = +(8 + ((player.no * 11) % 8)).toFixed(1);
   const fat = +((w * fatPct) / 100).toFixed(1);
@@ -22,14 +39,43 @@ export function inbodyLatest(player: Player) {
 
 const IB_MONTHS = ["2月", "3月", "4月", "5月", "6月", "7月"];
 
-export function inbodyTrend(player: Player) {
-  const b = inbodyLatest(player);
+function dummyInbodyTrend(b: InbodyLatest): InbodyTrendData {
   return {
     labels: IB_MONTHS,
     weightKg: IB_MONTHS.map((_, i) => +(b.weightKg - 1.5 + i * 0.3).toFixed(1)),
     muscleMassKg: IB_MONTHS.map((_, i) => +(b.muscleMassKg - 1 + i * 0.2).toFixed(1)),
     fatPct: IB_MONTHS.map((_, i) => +(b.fatPct + 1 - i * 0.15).toFixed(1)),
   };
+}
+
+// InBody取込み(CSV, §5.7と同じ思想)の実データがあればそれを、無ければダミーにフォールバック。
+export async function getInbodyData(
+  player: Player
+): Promise<{ latest: InbodyLatest; trend: InbodyTrendData; isReal: boolean; measuredDate?: string }> {
+  const history = await getInbodyHistory(player.playerId);
+
+  if (history && history.length > 0) {
+    const latestRow = history[history.length - 1];
+    return {
+      latest: {
+        weightKg: latestRow.weightKg,
+        muscleMassKg: latestRow.muscleMassKg,
+        fatMassKg: latestRow.fatMassKg,
+        fatPct: latestRow.fatPct,
+      },
+      trend: {
+        labels: history.map((h) => labelMD(h.date)),
+        weightKg: history.map((h) => h.weightKg),
+        muscleMassKg: history.map((h) => h.muscleMassKg),
+        fatPct: history.map((h) => h.fatPct),
+      },
+      isReal: true,
+      measuredDate: latestRow.date,
+    };
+  }
+
+  const latest = dummyInbodyLatest(player);
+  return { latest, trend: dummyInbodyTrend(latest), isReal: false };
 }
 
 export function aalTrend(player: Player, anchorDate: string) {
@@ -64,13 +110,74 @@ export interface HistoryRow {
   by: string;
 }
 
-export function careHistory(player: Player): HistoryRow[] {
-  // 実運用では decisions / care_log の実データを日付降順で表示する。
-  return [
-    { date: "7/15", type: "S&C", badge: "b-ok", content: "下肢筋力測定 実施。前回比+4%", by: "寺地" },
-    { date: "7/12", type: "ケア", badge: "b-soon", content: "試合後リカバリー(交代浴+ストレッチ)", by: "ATトレーナー" },
-    { date: "7/10", type: "メモ", badge: "b-part", content: "本人より疲労感の訴えあり。負荷10%減で対応", by: "寺地" },
-  ];
+const SEED_HISTORY: HistoryRow[] = [
+  { date: "7/15", type: "S&C", badge: "b-ok", content: "下肢筋力測定 実施。前回比+4%", by: "寺地" },
+  { date: "7/12", type: "ケア", badge: "b-soon", content: "試合後リカバリー(交代浴+ストレッチ)", by: "ATトレーナー" },
+  { date: "7/10", type: "メモ", badge: "b-part", content: "本人より疲労感の訴えあり。負荷10%減で対応", by: "寺地" },
+];
+
+// care_log(ケア実施記録)+ wellness(コメント・痛み申告)の実データを日付降順でまとめる。
+// Supabase未接続・エラー時はダミー3件にフォールバック。
+export async function careHistory(player: Player, limit = 8): Promise<HistoryRow[]> {
+  try {
+    const teamId = await getDefaultTeamId();
+    if (!teamId) throw new Error("no team");
+    const supabase = createAdminClient();
+
+    const [careRes, wellnessRes] = await Promise.all([
+      withTimeout(
+        supabase
+          .from("care_log")
+          .select("*")
+          .eq("team_id", teamId)
+          .eq("player_id", player.playerId)
+          .order("date", { ascending: false })
+          .limit(limit)
+      ),
+      withTimeout(
+        supabase
+          .from("wellness")
+          .select("*")
+          .eq("team_id", teamId)
+          .eq("player_id", player.playerId)
+          .order("date", { ascending: false })
+          .limit(limit)
+      ),
+    ]);
+    if (careRes.error) throw careRes.error;
+    if (wellnessRes.error) throw wellnessRes.error;
+
+    type Dated = HistoryRow & { rawDate: string };
+
+    const careRows: Dated[] = (careRes.data ?? []).map((r) => ({
+      rawDate: r.date,
+      date: labelMD(r.date),
+      type: "ケア",
+      badge: r.done ? "b-ok" : "b-soon",
+      content: r.menu + (r.done ? "" : "(未実施)"),
+      by: r.staff ?? "",
+    }));
+
+    const memoRows: Dated[] = (wellnessRes.data ?? [])
+      .filter((r) => r.pain_flag || (r.comment && r.comment.trim() !== ""))
+      .map((r) => ({
+        rawDate: r.date,
+        date: labelMD(r.date),
+        type: r.pain_flag ? "痛み申告" : "メモ",
+        badge: r.pain_flag ? "b-out" : "b-part",
+        content: r.comment && r.comment.trim() !== "" ? r.comment : "(コメントなし)",
+        by: "本人",
+      }));
+
+    const merged = [...careRows, ...memoRows]
+      .sort((a, b) => (a.rawDate < b.rawDate ? 1 : -1))
+      .slice(0, limit)
+      .map(({ rawDate: _rawDate, ...row }) => row);
+
+    return merged;
+  } catch {
+    return SEED_HISTORY;
+  }
 }
 
 export { STATUS_LABEL };

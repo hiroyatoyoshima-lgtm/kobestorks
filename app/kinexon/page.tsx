@@ -1,5 +1,6 @@
 import { listSyncLogs } from "@/lib/store/fileStore";
 import KinexonImportForm from "@/components/KinexonImportForm";
+import InbodyImportForm from "@/components/InbodyImportForm";
 
 export const dynamic = "force-dynamic";
 
@@ -49,6 +50,14 @@ export default function KinexonPage() {
           </table>
         )}
       </div>
+
+      <h2 className="section-title mt" style={{ marginTop: 32 }}>
+        InBody取込み{" "}
+        <span style={{ fontSize: 12, color: "var(--muted)", fontWeight: 400 }}>
+          管理者用・体組成計/スプシからのCSVエクスポートに対応
+        </span>
+      </h2>
+      <InbodyImportForm />
     </>
   );
 }

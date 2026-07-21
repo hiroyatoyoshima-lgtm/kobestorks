@@ -3,6 +3,7 @@ import { dateSeed, last14Days, labelMD, seededScale5, seededSeries, dayType, toI
 import { acwrBadgeClass, computeAlerts, getEffectiveDailyLoad, targetAal } from "../calc";
 import { DEFAULT_SETTINGS } from "../settings";
 import { compositeScore, getTeamWellnessForDate, getTeamWellnessRange } from "./wellness-repo";
+import { getDailyComment } from "./daily-comment-repo";
 
 export function todayISO(): string {
   return toISO(new Date());
@@ -61,6 +62,7 @@ export interface DashboardData {
     acwrBadge: string;
   }[];
   comment: string;
+  commentEditable: boolean;
   usingRealData: boolean;
 }
 
@@ -83,10 +85,11 @@ export async function getDashboardData(date: string): Promise<DashboardData> {
   const teamAalUp = seed % 2 === 1;
 
   // ── ウェルネス(実データ優先。Supabase未接続時のみダミー) ──
-  const [wellnessToday, wellnessYesterday, wellnessRange] = await Promise.all([
+  const [wellnessToday, wellnessYesterday, wellnessRange, dailyComment] = await Promise.all([
     getTeamWellnessForDate(date),
     getTeamWellnessForDate(prevDayISO(date)),
     getTeamWellnessRange(days[0], days[days.length - 1]),
+    getDailyComment(date),
   ]);
 
   let wellnessAvg: string;
@@ -209,7 +212,8 @@ export async function getDashboardData(date: string): Promise<DashboardData> {
     alerts,
     playerComments,
     dailyTable,
-    comment: COMMENT_TEMPLATES[seed % COMMENT_TEMPLATES.length],
+    comment: dailyComment ? dailyComment.comment ?? "" : COMMENT_TEMPLATES[seed % COMMENT_TEMPLATES.length],
+    commentEditable: !!dailyComment,
     // このフラグは「デイリーレポート」表内のKinexon由来の数値(Total AAL・ACWR等)が
     // 実データかどうかだけを表す。wellnessToday は空Mapでも truthy になるため含めない
     // (Supabaseに繋がっているだけでKinexon実データ扱いになるバグがあったため修正)。

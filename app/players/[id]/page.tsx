@@ -3,10 +3,9 @@ import { notFound } from "next/navigation";
 import {
   aalTrend,
   careHistory,
+  getInbodyData,
   getInjuryForPlayer,
   getPlayer,
-  inbodyLatest,
-  inbodyTrend,
   STATUS_LABEL,
   wellnessTrend,
 } from "@/lib/data/player";
@@ -35,12 +34,11 @@ export default async function PlayerDetailPage({
   if (!player) notFound();
 
   const injury = getInjuryForPlayer(player.playerId);
-  const ib = inbodyLatest(player);
-  const ibTrend = inbodyTrend(player);
+  const { latest: ib, trend: ibTrend, isReal: inbodyIsReal, measuredDate } = await getInbodyData(player);
   const date = todayISO();
   const aal = aalTrend(player, date);
   const wellness = await wellnessTrend(player, date);
-  const history = careHistory(player);
+  const history = await careHistory(player);
 
   return (
     <>
@@ -74,10 +72,14 @@ export default async function PlayerDetailPage({
 
       <div className="card" style={{ marginBottom: 14 }}>
         <h2 className="section-title">
-          InBody(最新測定){" "}
-          <span style={{ fontSize: 11, color: "var(--muted)", fontWeight: 400 }}>
-            ※値はダミー。スプシ連携で実測値を表示
-          </span>
+          InBody{inbodyIsReal && measuredDate ? `(最新測定 ${measuredDate})` : "(最新測定)"}{" "}
+          {inbodyIsReal ? (
+            <span className="badge b-ok">実データ</span>
+          ) : (
+            <span style={{ fontSize: 11, color: "var(--muted)", fontWeight: 400 }}>
+              ※値はダミー。InBody取込み(管理者)で実測値に切替
+            </span>
+          )}
         </h2>
         <div className="grid kpi">
           <div className="card">
@@ -136,28 +138,32 @@ export default async function PlayerDetailPage({
 
       <div className="card mt">
         <h2 className="section-title">直近のメモ・ケア履歴</h2>
-        <table>
-          <thead>
-            <tr>
-              <th>日付</th>
-              <th>種別</th>
-              <th>内容</th>
-              <th>記録者</th>
-            </tr>
-          </thead>
-          <tbody>
-            {history.map((h, i) => (
-              <tr key={i}>
-                <td>{h.date}</td>
-                <td>
-                  <span className={`badge ${h.badge}`}>{h.type}</span>
-                </td>
-                <td>{h.content}</td>
-                <td>{h.by}</td>
+        {history.length === 0 ? (
+          <p className="note">まだケア記録・アンケートのコメントはありません。</p>
+        ) : (
+          <table>
+            <thead>
+              <tr>
+                <th>日付</th>
+                <th>種別</th>
+                <th>内容</th>
+                <th>記録者</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {history.map((h, i) => (
+                <tr key={i}>
+                  <td>{h.date}</td>
+                  <td>
+                    <span className={`badge ${h.badge}`}>{h.type}</span>
+                  </td>
+                  <td>{h.content}</td>
+                  <td>{h.by}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
     </>
   );

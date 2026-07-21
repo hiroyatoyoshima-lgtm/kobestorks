@@ -208,6 +208,18 @@ create table decisions (
 );
 
 -- =========================================================
+-- daily_comments 日次S&Cコメント(§5.2: decisionsまたは専用列。ここでは専用テーブル)
+-- =========================================================
+create table daily_comments (
+  team_id     uuid not null references teams (team_id) on delete cascade,
+  date        date not null,
+  comment     text,
+  updated_by  text,
+  updated_at  timestamptz not null default now(),
+  primary key (team_id, date)
+);
+
+-- =========================================================
 -- §4.10 その他
 -- =========================================================
 create table settings (
@@ -257,6 +269,7 @@ alter table care_log enable row level security;
 alter table inbody enable row level security;
 alter table nutrition enable row level security;
 alter table decisions enable row level security;
+alter table daily_comments enable row level security;
 alter table settings enable row level security;
 alter table schedule enable row level security;
 alter table sheet_mappings enable row level security;
@@ -360,6 +373,11 @@ create policy decisions_select on decisions
     and (auth_role() != 'player' or player_id = auth_player_id())
   );
 create policy decisions_write on decisions
+  for all using (team_id = auth_team_id() and auth_role() = 'admin');
+
+create policy daily_comments_select on daily_comments
+  for select using (team_id = auth_team_id());
+create policy daily_comments_write on daily_comments
   for all using (team_id = auth_team_id() and auth_role() = 'admin');
 
 create policy settings_select on settings
