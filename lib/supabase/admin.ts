@@ -16,3 +16,22 @@ export function createAdminClient(): SupabaseClient {
   });
   return cached;
 }
+
+// Supabase側が落ちている/DNSが引けない等で応答が無い場合、Supabase-jsに`global.fetch`の
+// AbortSignalを渡しても効かないことを確認済みのため、呼び出し側で強制的に諦める。
+// 例: const { data, error } = await withTimeout(supabase.from("teams").select());
+export function withTimeout<T>(promise: PromiseLike<T>, ms = 2500): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`Supabase request timed out after ${ms}ms`)), ms);
+    Promise.resolve(promise).then(
+      (v) => {
+        clearTimeout(timer);
+        resolve(v);
+      },
+      (e) => {
+        clearTimeout(timer);
+        reject(e);
+      }
+    );
+  });
+}

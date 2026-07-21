@@ -1,4 +1,4 @@
-import { createAdminClient } from "../supabase/admin";
+import { createAdminClient, withTimeout } from "../supabase/admin";
 import { getDefaultTeamId } from "../supabase/team";
 import { INJURIES as SEED_INJURIES, CARE_LOGS as SEED_CARE_LOGS } from "./seed";
 import type { CareLog, Injury, InjuryStatus } from "../types";
@@ -17,8 +17,8 @@ export async function getInjuriesPageData(dateIso: string): Promise<InjuriesPage
     const supabase = createAdminClient();
 
     const [injuriesRes, careRes] = await Promise.all([
-      supabase.from("injuries").select("*").eq("team_id", teamId),
-      supabase.from("care_log").select("*").eq("team_id", teamId).eq("date", dateIso),
+      withTimeout(supabase.from("injuries").select("*").eq("team_id", teamId)),
+      withTimeout(supabase.from("care_log").select("*").eq("team_id", teamId).eq("date", dateIso)),
     ]);
     if (injuriesRes.error) throw injuriesRes.error;
     if (careRes.error) throw careRes.error;
@@ -53,5 +53,51 @@ export async function getInjuriesPageData(dateIso: string): Promise<InjuriesPage
     return { injuries, careLogs, source: "supabase" };
   } catch {
     return { injuries: SEED_INJURIES, careLogs: SEED_CARE_LOGS, source: "seed" };
+  }
+}
+
+export interface CareCalendarEntry {
+  menu: string;
+  staff: string;
+  done: boolean;
+}
+
+// playerId -> date(YYYY-MM-DD) -> その日のケア内容一覧
+export type CareCalendarMap = Map<string, Map<string, CareCalendarEntry[]>>;
+
+// 指定選手たちの、指定期間分のケア記録をまとめて取得(選手別カレンダー表示用)。
+// Supabase未接続時は null を返し、呼び出し側でカレンダー自体を非表示にする。
+export async function getCareCalendar(
+  playerIds: string[],
+  startDate: string,
+  endDate: string
+): Promise<CareCalendarMap | null> {
+  if (playerIds.length === 0) return new Map();
+  try {
+    const teamId = await getDefaultTeamId();
+    if (!teamId) return null;
+    const supabase = createAdminClient();
+    const { data, error } = await withTimeout(
+      supabase
+        .from("care_log")
+        .select("*")
+        .eq("team_id", teamId)
+        .in("player_id", playerIds)
+        .gte("date", startDate)
+        .lte("date", endDate)
+    );
+    if (error) return null;
+
+    const map: CareCalendarMap = new Map();
+    for (const r of data ?? []) {
+      const byDate = map.get(r.player_id) ?? new Map<string, CareCalendarEntry[]>();
+      const entries = byDate.get(r.date) ?? [];
+      entries.push({ menu: r.menu ?? "", staff: r.staff ?? "", done: !!r.done });
+      byDate.set(r.date, entries);
+      map.set(r.player_id, byDate);
+    }
+    return map;
+  } catch {
+    return null;
   }
 }

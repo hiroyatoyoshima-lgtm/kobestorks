@@ -1,4 +1,4 @@
-import { createAdminClient } from "../supabase/admin";
+import { createAdminClient, withTimeout } from "../supabase/admin";
 import { getDefaultTeamId } from "../supabase/team";
 import { NUTRITION_TODAY as SEED_NUTRITION } from "./seed";
 import type { NutritionReport, NutritionTiming } from "../types";
@@ -15,12 +15,14 @@ export async function getNutritionPageData(dateIso: string): Promise<NutritionPa
     if (!teamId) throw new Error("team not found");
     const supabase = createAdminClient();
 
-    const { data, error } = await supabase
-      .from("nutrition")
-      .select("*")
-      .eq("team_id", teamId)
-      .eq("date", dateIso)
-      .order("created_at", { ascending: false });
+    const { data, error } = await withTimeout(
+      supabase
+        .from("nutrition")
+        .select("*")
+        .eq("team_id", teamId)
+        .eq("date", dateIso)
+        .order("created_at", { ascending: false })
+    );
     if (error) throw error;
 
     const latestByTiming = new Map<string, NutritionReport>();

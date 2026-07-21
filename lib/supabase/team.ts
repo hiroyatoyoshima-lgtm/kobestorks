@@ -1,4 +1,4 @@
-import { createAdminClient } from "./admin";
+import { createAdminClient, withTimeout } from "./admin";
 
 let cachedTeamId: string | null = null;
 let inFlight: Promise<string | null> | null = null;
@@ -13,7 +13,9 @@ export async function getDefaultTeamId(): Promise<string | null> {
   inFlight = (async () => {
     try {
       const supabase = createAdminClient();
-      const { data, error } = await supabase.from("teams").select("team_id").limit(1).maybeSingle();
+      const { data, error } = await withTimeout(
+        supabase.from("teams").select("team_id").limit(1).maybeSingle()
+      );
       if (error || !data) return null;
       cachedTeamId = data.team_id;
       return cachedTeamId;

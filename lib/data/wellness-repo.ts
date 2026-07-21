@@ -1,4 +1,4 @@
-import { createAdminClient } from "../supabase/admin";
+import { createAdminClient, withTimeout } from "../supabase/admin";
 import { getDefaultTeamId } from "../supabase/team";
 
 export interface WellnessRow {
@@ -53,7 +53,9 @@ export async function getTeamWellnessForDate(date: string): Promise<Map<string, 
     const teamId = await getDefaultTeamId();
     if (!teamId) return null;
     const supabase = createAdminClient();
-    const { data, error } = await supabase.from("wellness").select("*").eq("team_id", teamId).eq("date", date);
+    const { data, error } = await withTimeout(
+      supabase.from("wellness").select("*").eq("team_id", teamId).eq("date", date)
+    );
     if (error) return null;
     const map = new Map<string, WellnessRow>();
     for (const r of (data ?? []) as WellnessDb[]) map.set(r.player_id, toRow(r));
@@ -72,12 +74,14 @@ export async function getTeamWellnessRange(
     const teamId = await getDefaultTeamId();
     if (!teamId) return null;
     const supabase = createAdminClient();
-    const { data, error } = await supabase
-      .from("wellness")
-      .select("*")
-      .eq("team_id", teamId)
-      .gte("date", startDate)
-      .lte("date", endDate);
+    const { data, error } = await withTimeout(
+      supabase
+        .from("wellness")
+        .select("*")
+        .eq("team_id", teamId)
+        .gte("date", startDate)
+        .lte("date", endDate)
+    );
     if (error) return null;
     const map = new Map<string, WellnessRow[]>();
     for (const r of (data ?? []) as WellnessDb[]) {
@@ -102,13 +106,15 @@ export async function getPlayerWellnessRange(
     const teamId = await getDefaultTeamId();
     if (!teamId) return null;
     const supabase = createAdminClient();
-    const { data, error } = await supabase
-      .from("wellness")
-      .select("*")
-      .eq("team_id", teamId)
-      .eq("player_id", playerId)
-      .gte("date", startDate)
-      .lte("date", endDate);
+    const { data, error } = await withTimeout(
+      supabase
+        .from("wellness")
+        .select("*")
+        .eq("team_id", teamId)
+        .eq("player_id", playerId)
+        .gte("date", startDate)
+        .lte("date", endDate)
+    );
     if (error) return null;
     const map = new Map<string, WellnessRow>();
     for (const r of (data ?? []) as WellnessDb[]) map.set(r.date, toRow(r));
