@@ -7,6 +7,7 @@ import { compositeScore, getTeamWellnessForDate, getTeamWellnessRange, type Well
 import { getDailyComment } from "./daily-comment-repo";
 import { getTeamSettings } from "./settings-repo";
 import { getTeamPlayers } from "./players-repo";
+import { getTeamDistanceRange } from "./kinexon-repo";
 
 export function todayISO(): string {
   return toISO(new Date());
@@ -163,11 +164,12 @@ export async function getDashboardData(date: string): Promise<DashboardData> {
   const teamAalUp = seed % 2 === 1;
 
   // ── ウェルネス(実データ優先。Supabase未接続時のみダミー) ──
-  const [wellnessToday, wellnessYesterday, wellnessRange, dailyComment] = await Promise.all([
+  const [wellnessToday, wellnessYesterday, wellnessRange, dailyComment, distanceRange] = await Promise.all([
     getTeamWellnessForDate(date),
     getTeamWellnessForDate(prevDayISO(date)),
     getTeamWellnessRange(days[0], days[days.length - 1]),
     getDailyComment(date),
+    getTeamDistanceRange(days[0], days[days.length - 1]),
   ]);
 
   let wellnessAvg: string;
@@ -220,6 +222,12 @@ export async function getDashboardData(date: string): Promise<DashboardData> {
       return +(rows.reduce((s, w) => s + w.fatigue, 0) / rows.length).toFixed(1);
     }
     return seededScale5(9, 3.4, days, seed)[i];
+  });
+
+  const distanceSeries = days.map((d, i) => {
+    const real = distanceRange.get(d);
+    if (real !== undefined) return real;
+    return seededSeries(23, 3800, 1400, days)[i];
   });
 
   const hasRealWellnessToday = !!wellnessToday && wellnessToday.size > 0;
@@ -297,7 +305,7 @@ export async function getDashboardData(date: string): Promise<DashboardData> {
       srpe: seededScale5(4, 3.0, days, seed),
     },
     wellnessSeries: {
-      distance: seededSeries(23, 3800, 1400, days),
+      distance: distanceSeries,
       fatigue: fatigueSeries,
     },
     alerts,

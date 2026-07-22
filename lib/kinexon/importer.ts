@@ -17,6 +17,7 @@ export interface RowResult {
   playerName: string | null;
   drillName: string;
   aal: number | null;
+  distanceM: number | null;
   error?: string;
 }
 
@@ -60,11 +61,13 @@ export function processCsv(
     // 列に日付があればそちらを優先、無ければ取込み画面で指定した対象日を使う(§5.7)
     const rawDate = mapping.date ? row[mapping.date] : "";
     const rawAal = mapping.aal ? row[mapping.aal] : "";
+    const rawDistance = mapping.distanceM ? row[mapping.distanceM] : "";
     const drillName = (mapping.drillName ? row[mapping.drillName] : "") || "セッション";
 
     const date = rawDate ? normalizeDate(rawDate) : sessionDate || null;
     const playerId = rawName ? nameIndex.get(normalizeName(rawName)) ?? null : null;
     const aal = rawAal !== "" && !Number.isNaN(Number(rawAal)) ? Number(rawAal) : null;
+    const distanceM = rawDistance !== "" && !Number.isNaN(Number(rawDistance)) ? Number(rawDistance) : null;
 
     let error: string | undefined;
     if (!date) error = "日付を解釈できません(対象日が未指定です)";
@@ -80,6 +83,7 @@ export function processCsv(
       playerName: playerId ? players.find((p) => p.playerId === playerId)?.nameJa ?? null : null,
       drillName,
       aal,
+      distanceM,
       error,
     });
   });
@@ -129,6 +133,7 @@ export async function commitImport(results: RowResult[], players: Player[]): Pro
       drillName: r.drillName,
       playerId: r.playerId,
       aal: r.aal,
+      distanceM: r.distanceM ?? undefined,
       source: "kinexon_csv",
     };
     const list = byPlayerDate.get(key) ?? [];
@@ -143,6 +148,9 @@ export async function commitImport(results: RowResult[], players: Player[]): Pro
     const player = players.find((p) => p.playerId === playerId)!;
     const dt = dayType(date);
     const totalAal = drills.reduce((sum, d) => sum + d.aal, 0);
+    const drillsWithDistance = drills.filter((d) => d.distanceM !== undefined);
+    const totalDistanceM =
+      drillsWithDistance.length > 0 ? drillsWithDistance.reduce((sum, d) => sum + d.distanceM!, 0) : null;
     const target = targetAal(player, dt, DEFAULT_SETTINGS);
     const deficit = totalAal - target;
     await upsertDailyLoad(playerId, date, {
@@ -151,6 +159,7 @@ export async function commitImport(results: RowResult[], players: Player[]): Pro
       deficitLoad: Math.round(deficit),
       deficitMin: deficit < 0 ? +(Math.abs(deficit) / 20).toFixed(1) : 0,
       intensityBand: intensityBand(totalAal, DEFAULT_SETTINGS),
+      totalDistanceM: totalDistanceM !== null ? Math.round(totalDistanceM) : null,
     });
   }
 

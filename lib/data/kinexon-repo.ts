@@ -14,6 +14,7 @@ export interface StoredDailyLoad {
   deficitLoad: number;
   deficitMin: number;
   intensityBand: string;
+  totalDistanceM?: number | null;
 }
 
 export interface SyncLogEntry {
@@ -58,6 +59,7 @@ export async function replaceSessionsForPlayerDate(
         drill_name: d.drillName,
         player_id: d.playerId,
         aal: d.aal,
+        distance_m: d.distanceM ?? null,
         source: d.source,
       }))
     )
@@ -80,6 +82,7 @@ export async function upsertDailyLoad(playerId: string, date: string, load: Stor
         deficit_load: load.deficitLoad,
         deficit_min: load.deficitMin,
         intensity_band: load.intensityBand,
+        total_distance_m: load.totalDistanceM ?? null,
       },
       { onConflict: "team_id,player_id,date" }
     )
@@ -95,7 +98,7 @@ export async function getDailyLoad(playerId: string, date: string): Promise<Stor
     const { data, error } = await withTimeout(
       supabase
         .from("daily_load")
-        .select("total_aal, target_aal, deficit_load, deficit_min, intensity_band")
+        .select("total_aal, target_aal, deficit_load, deficit_min, intensity_band, total_distance_m")
         .eq("team_id", teamId)
         .eq("player_id", playerId)
         .eq("date", date)
@@ -108,9 +111,47 @@ export async function getDailyLoad(playerId: string, date: string): Promise<Stor
       deficitLoad: data.deficit_load,
       deficitMin: data.deficit_min,
       intensityBand: data.intensity_band,
+      totalDistanceM: data.total_distance_m,
     };
   } catch {
     return undefined;
+  }
+}
+
+// 直近日付範囲でチーム平均のDistanceを日別に集計する(ダッシュボードの疲労度×Distanceグラフ用)。
+// その日にtotal_distance_mを持つ選手だけで平均を取る(§7)。
+export async function getTeamDistanceRange(
+  startDate: string,
+  endDate: string
+): Promise<Map<string, number>> {
+  try {
+    const teamId = await getDefaultTeamId();
+    if (!teamId) return new Map();
+    const supabase = createAdminClient();
+    const { data, error } = await withTimeout(
+      supabase
+        .from("daily_load")
+        .select("date, total_distance_m")
+        .eq("team_id", teamId)
+        .gte("date", startDate)
+        .lte("date", endDate)
+        .not("total_distance_m", "is", null)
+    );
+    if (error) return new Map();
+
+    const byDate = new Map<string, number[]>();
+    for (const r of (data ?? []) as { date: string; total_distance_m: number }[]) {
+      const list = byDate.get(r.date) ?? [];
+      list.push(r.total_distance_m);
+      byDate.set(r.date, list);
+    }
+    const avgByDate = new Map<string, number>();
+    for (const [date, values] of byDate) {
+      avgByDate.set(date, Math.round(values.reduce((s, v) => s + v, 0) / values.length));
+    }
+    return avgByDate;
+  } catch {
+    return new Map();
   }
 }
 
