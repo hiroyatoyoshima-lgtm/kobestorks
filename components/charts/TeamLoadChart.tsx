@@ -6,11 +6,11 @@ import { Chart } from "react-chartjs-2";
 export default function TeamLoadChart({
   labels,
   aal,
-  rpe,
+  srpe,
 }: {
   labels: string[];
   aal: (number | null)[];
-  rpe: (number | null)[];
+  srpe: (number | null)[];
 }) {
   return (
     <Chart
@@ -31,8 +31,8 @@ export default function TeamLoadChart({
           },
           {
             type: "line" as const,
-            label: "RPE(1-10・チーム平均)",
-            data: rpe,
+            label: "sRPE(RPE×セッション時間・チーム平均)",
+            data: srpe,
             borderColor: "#b0770f",
             backgroundColor: "#b0770f",
             pointRadius: 3,
@@ -52,10 +52,9 @@ export default function TeamLoadChart({
           y: { position: "left", title: { display: true, text: "AAL" } },
           y2: {
             position: "right",
-            min: 1,
-            max: 10,
+            beginAtZero: true,
             grid: { drawOnChartArea: false },
-            title: { display: true, text: "RPE" },
+            title: { display: true, text: "sRPE" },
           },
         },
         plugins: { legend: { position: "bottom" } },

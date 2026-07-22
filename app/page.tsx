@@ -63,9 +63,9 @@ export default async function DashboardPage({
 
       <div className="grid two mt">
         <div className="card">
-          <h2 className="section-title">チーム負荷推移(直近14日) AAL × RPE</h2>
+          <h2 className="section-title">チーム負荷推移(直近14日) AAL × sRPE</h2>
           <div className="chart-box">
-            <TeamLoadChart labels={data.dayLabels} aal={data.teamLoadSeries.aal} rpe={data.teamLoadSeries.rpe} />
+            <TeamLoadChart labels={data.dayLabels} aal={data.teamLoadSeries.aal} srpe={data.teamLoadSeries.srpe} />
           </div>
         </div>
         <div className="card">

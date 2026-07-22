@@ -15,6 +15,7 @@ export interface StoredDailyLoad {
   deficitMin: number;
   intensityBand: string;
   totalDistanceM?: number | null;
+  durationMin?: number | null;
 }
 
 export interface SyncLogEntry {
@@ -60,6 +61,7 @@ export async function replaceSessionsForPlayerDate(
         player_id: d.playerId,
         aal: d.aal,
         distance_m: d.distanceM ?? null,
+        duration_min: d.durationMin ?? null,
         accel_count: d.accelCount ?? null,
         decel_count: d.decelCount ?? null,
         jump_count: d.jumpCount ?? null,
@@ -93,6 +95,7 @@ export async function upsertDailyLoad(playerId: string, date: string, load: Stor
         deficit_min: load.deficitMin,
         intensity_band: load.intensityBand,
         total_distance_m: load.totalDistanceM ?? null,
+        duration_min: load.durationMin ?? null,
       },
       { onConflict: "team_id,player_id,date" }
     )
@@ -108,7 +111,7 @@ export async function getDailyLoad(playerId: string, date: string): Promise<Stor
     const { data, error } = await withTimeout(
       supabase
         .from("daily_load")
-        .select("total_aal, target_aal, deficit_load, deficit_min, intensity_band, total_distance_m")
+        .select("total_aal, target_aal, deficit_load, deficit_min, intensity_band, total_distance_m, duration_min")
         .eq("team_id", teamId)
         .eq("player_id", playerId)
         .eq("date", date)
@@ -122,6 +125,7 @@ export async function getDailyLoad(playerId: string, date: string): Promise<Stor
       deficitMin: data.deficit_min,
       intensityBand: data.intensity_band,
       totalDistanceM: data.total_distance_m,
+      durationMin: data.duration_min,
     };
   } catch {
     return undefined;
@@ -170,6 +174,39 @@ export async function getTeamLoadSeriesRange(
     };
   } catch {
     return { aal: new Map(), distance: new Map() };
+  }
+}
+
+// 日付ごと・選手ごとのセッション時間(分)を返す(sRPE = RPE × セッション時間 の計算用)。
+// wellnessテーブルのRPEと選手×日付単位で突き合わせる必要があるため、チーム平均ではなく生の値を返す。
+export async function getTeamDurationByPlayerRange(
+  startDate: string,
+  endDate: string
+): Promise<Map<string, Map<string, number>>> {
+  try {
+    const teamId = await getDefaultTeamId();
+    if (!teamId) return new Map();
+    const supabase = createAdminClient();
+    const { data, error } = await withTimeout(
+      supabase
+        .from("daily_load")
+        .select("date, player_id, duration_min")
+        .eq("team_id", teamId)
+        .gte("date", startDate)
+        .lte("date", endDate)
+        .not("duration_min", "is", null)
+    );
+    if (error) return new Map();
+
+    const map = new Map<string, Map<string, number>>();
+    for (const r of (data ?? []) as { date: string; player_id: string; duration_min: number }[]) {
+      const byPlayer = map.get(r.date) ?? new Map<string, number>();
+      byPlayer.set(r.player_id, r.duration_min);
+      map.set(r.date, byPlayer);
+    }
+    return map;
+  } catch {
+    return new Map();
   }
 }
 

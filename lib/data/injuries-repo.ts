@@ -15,8 +15,9 @@ export async function getInjuriesPageData(dateIso: string): Promise<InjuriesPage
     if (!teamId) throw new Error("team not found");
     const supabase = createAdminClient();
 
+    // 復帰日(return_date)が入っている=治療完了した怪我は一覧に出さない(player.statusの導出と揃える)。
     const [injuriesRes, careRes] = await Promise.all([
-      withTimeout(supabase.from("injuries").select("*").eq("team_id", teamId)),
+      withTimeout(supabase.from("injuries").select("*").eq("team_id", teamId).is("return_date", null)),
       withTimeout(supabase.from("care_log").select("*").eq("team_id", teamId).eq("date", dateIso)),
     ]);
     if (injuriesRes.error) throw injuriesRes.error;

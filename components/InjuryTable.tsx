@@ -233,6 +233,34 @@ function EditRow({ row, onDone, onCancel }: { row: Row; onDone: () => void; onCa
     }
   }
 
+  // 復帰日を記録する = 完治扱いにして一覧・選手ステータスから外す(§player.status導出と連動)
+  async function markRecovered() {
+    if (!confirm(`${row.name}選手を完治(復帰済み)として記録しますか?一覧から外れます。`)) return;
+    setErrorMsg(null);
+    setLoading(true);
+    try {
+      const res = await fetch("/api/injuries", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          injuryId: row.injuryId,
+          status,
+          rtpPhase,
+          rtpTargetDate: rtpTargetDate || null,
+          note,
+          returnDate: new Date().toISOString().slice(0, 10),
+        }),
+      });
+      const json = await res.json();
+      if (!json.ok) throw new Error(json.error ?? "保存に失敗しました");
+      onDone();
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : "保存に失敗しました");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
     <tr>
       <td>
@@ -274,6 +302,15 @@ function EditRow({ row, onDone, onCancel }: { row: Row; onDone: () => void; onCa
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6, minWidth: 90 }}>
           <button className="submit" style={{ margin: 0, padding: "6px 10px", fontSize: 12 }} disabled={loading} onClick={save}>
             保存
+          </button>
+          <button
+            type="button"
+            className="back"
+            style={{ margin: 0, borderColor: "var(--green)", color: "var(--green-deep)" }}
+            disabled={loading}
+            onClick={markRecovered}
+          >
+            完治として記録
           </button>
           <button className="back" style={{ margin: 0 }} onClick={onCancel}>
             取消

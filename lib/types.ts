@@ -92,6 +92,7 @@ export interface SessionDrill {
   aal: number;
   distanceM?: number;
   distancePerMin?: number;
+  durationMin?: number;
   accelCount?: number;
   decelCount?: number;
   jumpCount?: number;

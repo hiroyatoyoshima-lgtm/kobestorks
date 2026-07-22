@@ -30,6 +30,7 @@ const FIELD_ORDER: MappingField[] = [
   "distanceM",
   "sessionType",
   "startTime",
+  "durationMin",
   "accelCount",
   "decelCount",
   "jumpCount",

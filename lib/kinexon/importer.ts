@@ -2,7 +2,7 @@
 // Route Handler(preview/commit)から呼ばれる。DB接続後もこのファイルの入出力形は変えずに済む想定。
 
 import type { ParsedCsv } from "./csv";
-import { normalizeDate, normalizeName, type ColumnMapping } from "./mapping";
+import { normalizeDate, normalizeName, parseDurationToMinutes, type ColumnMapping } from "./mapping";
 import { dayType } from "../data/rng";
 import { intensityBand, targetAal } from "../calc";
 import { replaceSessionsForPlayerDate, upsertDailyLoad } from "../data/kinexon-repo";
@@ -18,6 +18,7 @@ export interface RowResult {
   drillName: string;
   aal: number | null;
   distanceM: number | null;
+  durationMin: number | null;
   accelCount: number | null;
   decelCount: number | null;
   jumpCount: number | null;
@@ -98,6 +99,7 @@ export function processCsv(
       drillName,
       aal,
       distanceM: readNumberField(row, mapping, "distanceM"),
+      durationMin: mapping.durationMin ? parseDurationToMinutes(row[mapping.durationMin] ?? "") : null,
       accelCount: readNumberField(row, mapping, "accelCount"),
       decelCount: readNumberField(row, mapping, "decelCount"),
       jumpCount: readNumberField(row, mapping, "jumpCount"),
@@ -158,6 +160,7 @@ export async function commitImport(results: RowResult[], players: Player[]): Pro
       playerId: r.playerId,
       aal: r.aal,
       distanceM: r.distanceM ?? undefined,
+      durationMin: r.durationMin ?? undefined,
       accelCount: r.accelCount ?? undefined,
       decelCount: r.decelCount ?? undefined,
       jumpCount: r.jumpCount ?? undefined,
@@ -188,6 +191,9 @@ export async function commitImport(results: RowResult[], players: Player[]): Pro
       const drillsWithDistance = drills.filter((d) => d.distanceM !== undefined);
       const totalDistanceM =
         drillsWithDistance.length > 0 ? drillsWithDistance.reduce((sum, d) => sum + d.distanceM!, 0) : null;
+      const drillsWithDuration = drills.filter((d) => d.durationMin !== undefined);
+      const totalDurationMin =
+        drillsWithDuration.length > 0 ? drillsWithDuration.reduce((sum, d) => sum + d.durationMin!, 0) : null;
       const target = targetAal(player, dt, DEFAULT_SETTINGS);
       const deficit = totalAal - target;
       await upsertDailyLoad(playerId, date, {
@@ -197,6 +203,7 @@ export async function commitImport(results: RowResult[], players: Player[]): Pro
         deficitMin: deficit < 0 ? +(Math.abs(deficit) / 20).toFixed(1) : 0,
         intensityBand: intensityBand(totalAal, DEFAULT_SETTINGS),
         totalDistanceM: totalDistanceM !== null ? Math.round(totalDistanceM) : null,
+        durationMin: totalDurationMin !== null ? +totalDurationMin.toFixed(1) : null,
       });
     })
   );

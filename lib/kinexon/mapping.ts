@@ -9,6 +9,7 @@ export type MappingField =
   | "distanceM"
   | "sessionType"
   | "startTime"
+  | "durationMin"
   | "accelCount"
   | "decelCount"
   | "jumpCount"
@@ -32,6 +33,7 @@ export const FIELD_LABELS: Record<MappingField, string> = {
   distanceM: "Distance(m)",
   sessionType: "セッション種別",
   startTime: "開始時刻",
+  durationMin: "セッション時間(sRPE計算用。HH:MM:SS形式の列)",
   accelCount: "Accel回数",
   decelCount: "Decel回数",
   jumpCount: "Jump回数",
@@ -51,7 +53,10 @@ const GUESS_PATTERNS: Record<MappingField, RegExp[]> = {
   aal: [/^aal$/i, /aal/i, /player.?load/i, /load/i],
   distanceM: [/distance/i, /走行距離/],
   sessionType: [/session.?type/i, /type/i, /区分/],
-  startTime: [/start/i, /time/i, /開始/],
+  // Kinexonの実エクスポートでは単なる"Time"列がHH:MM:SS形式のセッション時間(開始時刻ではない)
+  // であることが多いため、開始時刻より先に判定してdurationMin側に取らせる。
+  durationMin: [/^time$/i, /duration/i, /session.?time/i, /所要時間|セッション時間/],
+  startTime: [/start.?time/i, /開始/],
   // "Acceleration Load"等の負荷指標と誤マッチしないよう、count/回数を伴う列名のみを対象にする
   accelCount: [/accel.*count/i, /count.*accel/i],
   decelCount: [/decel.*count/i, /count.*decel/i],
@@ -93,6 +98,23 @@ export function normalizeDate(raw: string): string | null {
   m = s.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})/);
   if (m) return `${m[3]}-${m[1].padStart(2, "0")}-${m[2].padStart(2, "0")}`;
   return null;
+}
+
+// "HH:MM:SS"(または"MM:SS")形式のセッション時間表記を分に変換する。解釈できなければnull。
+export function parseDurationToMinutes(raw: string): number | null {
+  const parts = raw.trim().split(":").map(Number);
+  if (parts.some((p) => Number.isNaN(p))) return null;
+  let totalSeconds: number;
+  if (parts.length === 3) {
+    const [h, m, s] = parts;
+    totalSeconds = h * 3600 + m * 60 + s;
+  } else if (parts.length === 2) {
+    const [m, s] = parts;
+    totalSeconds = m * 60 + s;
+  } else {
+    return null;
+  }
+  return +(totalSeconds / 60).toFixed(1);
 }
 
 export function normalizeName(raw: string): string {

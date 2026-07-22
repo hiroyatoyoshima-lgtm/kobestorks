@@ -6,7 +6,7 @@ import { compositeScore, getTeamWellnessForDate, getTeamWellnessRange, type Well
 import { getDailyComment } from "./daily-comment-repo";
 import { getTeamSettings } from "./settings-repo";
 import { getTeamPlayers } from "./players-repo";
-import { getTeamLoadSeriesRange } from "./kinexon-repo";
+import { getTeamDurationByPlayerRange, getTeamLoadSeriesRange } from "./kinexon-repo";
 
 export function todayISO(): string {
   return toISO(new Date());
@@ -117,7 +117,7 @@ export interface DashboardData {
     wellnessUp: boolean;
     surveyRate: string;
   };
-  teamLoadSeries: { aal: (number | null)[]; rpe: (number | null)[] };
+  teamLoadSeries: { aal: (number | null)[]; srpe: (number | null)[] };
   wellnessSeries: { distance: (number | null)[]; fatigue: (number | null)[] };
   alerts: DashboardAlert[];
   alertsAreReal: boolean;
@@ -159,13 +159,15 @@ export async function getDashboardData(date: string): Promise<DashboardData> {
       ? Math.round(realLoads.reduce((sum, { load }) => sum + load.totalAal!, 0) / realLoads.length)
       : null;
 
-  const [wellnessToday, wellnessYesterday, wellnessRange, dailyComment, loadSeriesRange] = await Promise.all([
-    getTeamWellnessForDate(date),
-    getTeamWellnessForDate(prevDayISO(date)),
-    getTeamWellnessRange(days[0], days[days.length - 1]),
-    getDailyComment(date),
-    getTeamLoadSeriesRange(days[0], days[days.length - 1]),
-  ]);
+  const [wellnessToday, wellnessYesterday, wellnessRange, dailyComment, loadSeriesRange, durationRange] =
+    await Promise.all([
+      getTeamWellnessForDate(date),
+      getTeamWellnessForDate(prevDayISO(date)),
+      getTeamWellnessRange(days[0], days[days.length - 1]),
+      getDailyComment(date),
+      getTeamLoadSeriesRange(days[0], days[days.length - 1]),
+      getTeamDurationByPlayerRange(days[0], days[days.length - 1]),
+    ]);
 
   let wellnessAvg = "—";
   let wellnessDelta: string | null = null;
@@ -210,11 +212,23 @@ export async function getDashboardData(date: string): Promise<DashboardData> {
     return null;
   });
 
-  // RPE(練習後アンケートの主観的きつさ)。未入力の選手はその日の平均から除外する。
-  const rpeSeries = days.map((d) => {
-    const rows = wellnessRange?.get(d)?.filter((w) => w.rpe !== null) ?? [];
-    if (rows.length === 0) return null;
-    return +(rows.reduce((s, w) => s + w.rpe!, 0) / rows.length).toFixed(1);
+  // sRPE = RPE(練習後アンケート) × セッション時間(Kinexonの実データ)。
+  // 選手ごとに両方揃っている日だけ計算し、その平均をチームsRPEとする(§7)。
+  // 片方しか無い選手はその日の計算から除外し、誰も揃わない日はnull(推測では埋めない)。
+  const srpeSeries = days.map((d) => {
+    const wellnessRows = wellnessRange?.get(d) ?? [];
+    const durationByPlayer = durationRange.get(d);
+    if (!durationByPlayer) return null;
+
+    const products: number[] = [];
+    for (const w of wellnessRows) {
+      if (w.rpe === null) continue;
+      const duration = durationByPlayer.get(w.playerId);
+      if (duration === undefined) continue;
+      products.push(w.rpe * duration);
+    }
+    if (products.length === 0) return null;
+    return Math.round(products.reduce((s, v) => s + v, 0) / products.length);
   });
 
   const distanceSeries = days.map((d) => loadSeriesRange.distance.get(d) ?? null);
@@ -273,9 +287,7 @@ export async function getDashboardData(date: string): Promise<DashboardData> {
     },
     teamLoadSeries: {
       aal: teamAalSeries,
-      // チーム平均RPE(練習後アンケートより)。セッション時間との掛け算(真のsRPE)は
-      // Kinexonのセッション時間データが未整備のため、現時点ではRPEそのものを表示する。
-      rpe: rpeSeries,
+      srpe: srpeSeries,
     },
     wellnessSeries: {
       distance: distanceSeries,
