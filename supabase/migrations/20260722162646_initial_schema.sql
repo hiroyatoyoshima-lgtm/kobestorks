@@ -1,8 +1,6 @@
 -- STORKS Performance Hub — DBスキーマ(§4)+ マルチテナントRLS(§8)
--- このファイルは「現在のスキーマ全体」を人間が読むための参照用スナップショット。
--- 実際の適用・環境同期は supabase/migrations/ 配下のマイグレーションファイル
--- (`supabase db push`)で行う。今後スキーマを変更したら、両方を更新すること
--- (新しいマイグレーションファイルを追加 + このファイルにも反映)。
+-- Supabase の SQL Editor で実行するか、`supabase db push` で適用する。
+-- 実行順: 1) このファイル 2) seed.sql(任意・開発用ダミーデータ)
 
 create extension if not exists "pgcrypto";
 
