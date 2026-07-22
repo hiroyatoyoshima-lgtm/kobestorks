@@ -33,6 +33,13 @@ const FIELD_ORDER: MappingField[] = [
   "accelCount",
   "decelCount",
   "jumpCount",
+  "jumpHeightMaxM",
+  "speedMaxKmh",
+  "changesOfOrientation",
+  "exertions",
+  "anaerobicDistanceM",
+  "accelLoadHigh",
+  "accelLoadVeryHigh",
 ];
 
 export default function KinexonImportForm() {

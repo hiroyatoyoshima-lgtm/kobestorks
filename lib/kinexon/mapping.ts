@@ -11,7 +11,14 @@ export type MappingField =
   | "startTime"
   | "accelCount"
   | "decelCount"
-  | "jumpCount";
+  | "jumpCount"
+  | "jumpHeightMaxM"
+  | "speedMaxKmh"
+  | "changesOfOrientation"
+  | "exertions"
+  | "anaerobicDistanceM"
+  | "accelLoadVeryHigh"
+  | "accelLoadHigh";
 
 // Kinexonのセッション別エクスポートには日付列が無いことが多いため、dateは列マッピングではなく
 // 取込み画面で直接指定する運用に変更(§5.7)。CSVに日付列がある場合はここでマッピングしてもよい。
@@ -28,6 +35,13 @@ export const FIELD_LABELS: Record<MappingField, string> = {
   accelCount: "Accel回数",
   decelCount: "Decel回数",
   jumpCount: "Jump回数",
+  jumpHeightMaxM: "Jump Height 最大(m)",
+  speedMaxKmh: "Speed 最大(km/h)",
+  changesOfOrientation: "Changes of Orientation",
+  exertions: "Exertions",
+  anaerobicDistanceM: "Anaerobic Activity Distance(m)",
+  accelLoadVeryHigh: "Acceleration Load(very high)",
+  accelLoadHigh: "Acceleration Load(high)",
 };
 
 const GUESS_PATTERNS: Record<MappingField, RegExp[]> = {
@@ -43,6 +57,14 @@ const GUESS_PATTERNS: Record<MappingField, RegExp[]> = {
   decelCount: [/decel.*count/i, /count.*decel/i],
   // "Jump Height"等と誤マッチしないよう、"Jumps"のような回数そのものの列名を優先する
   jumpCount: [/^jumps?$/i, /jump.*count/i],
+  jumpHeightMaxM: [/jump.*height/i],
+  speedMaxKmh: [/speed/i],
+  changesOfOrientation: [/change.*orientation/i, /orientation/i],
+  exertions: [/exertion/i],
+  anaerobicDistanceM: [/anaerobic/i],
+  // "very high"を先に判定して使用済みにし、次のaccelLoadHighが誤ってvery high列を拾わないようにする
+  accelLoadVeryHigh: [/very.?high/i],
+  accelLoadHigh: [/load.*high/i, /high/i],
 };
 
 export type ColumnMapping = Partial<Record<MappingField, string>>;

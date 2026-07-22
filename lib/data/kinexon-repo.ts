@@ -60,6 +60,16 @@ export async function replaceSessionsForPlayerDate(
         player_id: d.playerId,
         aal: d.aal,
         distance_m: d.distanceM ?? null,
+        accel_count: d.accelCount ?? null,
+        decel_count: d.decelCount ?? null,
+        jump_count: d.jumpCount ?? null,
+        jump_height_max_m: d.jumpHeightMaxM ?? null,
+        speed_max_kmh: d.speedMaxKmh ?? null,
+        changes_of_orientation: d.changesOfOrientation ?? null,
+        exertions: d.exertions ?? null,
+        anaerobic_distance_m: d.anaerobicDistanceM ?? null,
+        accel_load_high: d.accelLoadHigh ?? null,
+        accel_load_very_high: d.accelLoadVeryHigh ?? null,
         source: d.source,
       }))
     )

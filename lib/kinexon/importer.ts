@@ -18,6 +18,16 @@ export interface RowResult {
   drillName: string;
   aal: number | null;
   distanceM: number | null;
+  accelCount: number | null;
+  decelCount: number | null;
+  jumpCount: number | null;
+  jumpHeightMaxM: number | null;
+  speedMaxKmh: number | null;
+  changesOfOrientation: number | null;
+  exertions: number | null;
+  anaerobicDistanceM: number | null;
+  accelLoadHigh: number | null;
+  accelLoadVeryHigh: number | null;
   error?: string;
 }
 
@@ -45,6 +55,13 @@ function isTeamSummaryRow(rawName: string): boolean {
   return /all players/i.test(rawName);
 }
 
+function readNumberField(row: Record<string, string>, mapping: ColumnMapping, field: keyof ColumnMapping): number | null {
+  const col = mapping[field];
+  if (!col) return null;
+  const raw = row[col];
+  return raw !== "" && raw !== undefined && !Number.isNaN(Number(raw)) ? Number(raw) : null;
+}
+
 export function processCsv(
   parsed: ParsedCsv,
   mapping: ColumnMapping,
@@ -60,14 +77,11 @@ export function processCsv(
 
     // 列に日付があればそちらを優先、無ければ取込み画面で指定した対象日を使う(§5.7)
     const rawDate = mapping.date ? row[mapping.date] : "";
-    const rawAal = mapping.aal ? row[mapping.aal] : "";
-    const rawDistance = mapping.distanceM ? row[mapping.distanceM] : "";
     const drillName = (mapping.drillName ? row[mapping.drillName] : "") || "セッション";
 
     const date = rawDate ? normalizeDate(rawDate) : sessionDate || null;
     const playerId = rawName ? nameIndex.get(normalizeName(rawName)) ?? null : null;
-    const aal = rawAal !== "" && !Number.isNaN(Number(rawAal)) ? Number(rawAal) : null;
-    const distanceM = rawDistance !== "" && !Number.isNaN(Number(rawDistance)) ? Number(rawDistance) : null;
+    const aal = readNumberField(row, mapping, "aal");
 
     let error: string | undefined;
     if (!date) error = "日付を解釈できません(対象日が未指定です)";
@@ -83,7 +97,17 @@ export function processCsv(
       playerName: playerId ? players.find((p) => p.playerId === playerId)?.nameJa ?? null : null,
       drillName,
       aal,
-      distanceM,
+      distanceM: readNumberField(row, mapping, "distanceM"),
+      accelCount: readNumberField(row, mapping, "accelCount"),
+      decelCount: readNumberField(row, mapping, "decelCount"),
+      jumpCount: readNumberField(row, mapping, "jumpCount"),
+      jumpHeightMaxM: readNumberField(row, mapping, "jumpHeightMaxM"),
+      speedMaxKmh: readNumberField(row, mapping, "speedMaxKmh"),
+      changesOfOrientation: readNumberField(row, mapping, "changesOfOrientation"),
+      exertions: readNumberField(row, mapping, "exertions"),
+      anaerobicDistanceM: readNumberField(row, mapping, "anaerobicDistanceM"),
+      accelLoadHigh: readNumberField(row, mapping, "accelLoadHigh"),
+      accelLoadVeryHigh: readNumberField(row, mapping, "accelLoadVeryHigh"),
       error,
     });
   });
@@ -134,6 +158,16 @@ export async function commitImport(results: RowResult[], players: Player[]): Pro
       playerId: r.playerId,
       aal: r.aal,
       distanceM: r.distanceM ?? undefined,
+      accelCount: r.accelCount ?? undefined,
+      decelCount: r.decelCount ?? undefined,
+      jumpCount: r.jumpCount ?? undefined,
+      jumpHeightMaxM: r.jumpHeightMaxM ?? undefined,
+      speedMaxKmh: r.speedMaxKmh ?? undefined,
+      changesOfOrientation: r.changesOfOrientation ?? undefined,
+      exertions: r.exertions ?? undefined,
+      anaerobicDistanceM: r.anaerobicDistanceM ?? undefined,
+      accelLoadHigh: r.accelLoadHigh ?? undefined,
+      accelLoadVeryHigh: r.accelLoadVeryHigh ?? undefined,
       source: "kinexon_csv",
     };
     const list = byPlayerDate.get(key) ?? [];

@@ -95,6 +95,13 @@ export interface SessionDrill {
   accelCount?: number;
   decelCount?: number;
   jumpCount?: number;
+  jumpHeightMaxM?: number;
+  speedMaxKmh?: number;
+  changesOfOrientation?: number;
+  exertions?: number;
+  anaerobicDistanceM?: number;
+  accelLoadHigh?: number;
+  accelLoadVeryHigh?: number;
   source: "kinexon_csv";
 }
 
