@@ -31,11 +31,6 @@ export default function UserManagement({ users, players }: { users: TeamUserView
   const [newPlayerId, setNewPlayerId] = useState(players[0]?.playerId ?? "");
   const [newIsTeamManager, setNewIsTeamManager] = useState(false);
 
-  function playerName(playerId: string | null) {
-    if (!playerId) return "";
-    return players.find((p) => p.playerId === playerId)?.nameJa ?? playerId;
-  }
-
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
     setErrorMsg(null);
@@ -127,8 +122,9 @@ export default function UserManagement({ users, players }: { users: TeamUserView
                     onChange={(e) => {
                       const role = e.target.value as Role;
                       // 選手ロールに切り替えた際、選手が未紐付けなら先頭の選手を仮に割り当てる
-                      // (紐付け忘れでplayer_idがnullのまま保存されるのを防ぐ。すぐ隣のセレクトで変更可能)
-                      const playerId = role === "player" ? u.playerId ?? players[0]?.playerId ?? null : u.playerId;
+                      // (紐付け忘れでplayer_idがnullのまま保存されるのを防ぐ。すぐ隣のセレクトで変更可能)。
+                      // 選手ロール以外に切り替えた場合はplayer_idを必ずクリアする(古い紐付けが残らないように)。
+                      const playerId = role === "player" ? u.playerId ?? players[0]?.playerId ?? null : null;
                       patchUser(u.userId, { role, playerId });
                     }}
                   >
@@ -154,7 +150,8 @@ export default function UserManagement({ users, players }: { users: TeamUserView
                       ))}
                     </select>
                   ) : (
-                    <span className="note">{playerName(u.playerId) || "—"}</span>
+                    // 選手ロール以外はplayer_idを持たない想定(古いデータが残っていても表示しない)
+                    <span className="note">—</span>
                   )}
                 </td>
                 <td style={{ textAlign: "center" }}>

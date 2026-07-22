@@ -31,34 +31,36 @@ export default async function KinexonPage() {
         {logs.length === 0 ? (
           <p className="note">まだ取込み履歴はありません。</p>
         ) : (
-          <table>
-            <thead>
-              <tr>
-                <th>日時</th>
-                <th>ファイル</th>
-                <th>状態</th>
-                <th>行数</th>
-                <th>反映 選手×日</th>
-                <th>エラー行</th>
-              </tr>
-            </thead>
-            <tbody>
-              {logs.map((log) => (
-                <tr key={log.id}>
-                  <td>{new Date(log.ranAt).toLocaleString("ja-JP")}</td>
-                  <td>{log.fileName}</td>
-                  <td>
-                    <span className={`badge ${log.status === "ok" ? "b-ok" : "b-out"}`}>
-                      {log.status === "ok" ? "成功" : "エラー"}
-                    </span>
-                  </td>
-                  <td>{log.rowCount}</td>
-                  <td>{log.matchedPlayerDates}</td>
-                  <td>{log.errorRowCount}</td>
+          <div style={{ overflowX: "auto" }}>
+            <table>
+              <thead>
+                <tr>
+                  <th>日時</th>
+                  <th>ファイル</th>
+                  <th>状態</th>
+                  <th>行数</th>
+                  <th>反映 選手×日</th>
+                  <th>エラー行</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {logs.map((log) => (
+                  <tr key={log.id}>
+                    <td style={{ whiteSpace: "nowrap" }}>{new Date(log.ranAt).toLocaleString("ja-JP")}</td>
+                    <td style={{ minWidth: 120 }}>{log.fileName}</td>
+                    <td style={{ whiteSpace: "nowrap" }}>
+                      <span className={`badge ${log.status === "ok" ? "b-ok" : "b-out"}`}>
+                        {log.status === "ok" ? "成功" : "エラー"}
+                      </span>
+                    </td>
+                    <td style={{ whiteSpace: "nowrap" }}>{log.rowCount}</td>
+                    <td style={{ whiteSpace: "nowrap" }}>{log.matchedPlayerDates}</td>
+                    <td style={{ whiteSpace: "nowrap" }}>{log.errorRowCount}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 

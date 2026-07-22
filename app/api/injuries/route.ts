@@ -22,6 +22,10 @@ export async function POST(request: Request) {
     await requireRole(EDIT_INJURIES);
     const body = (await request.json()) as CreateBody;
 
+    if (body.rtpTargetDate && body.rtpTargetDate < body.onsetDate) {
+      return Response.json({ ok: false, error: "復帰予定日は受傷日より前に設定できません。" }, { status: 400 });
+    }
+
     const teamId = await getDefaultTeamId();
     if (!teamId) {
       return Response.json({ ok: false, error: "チーム情報が見つかりません(Supabaseに接続できない可能性があります)。" }, { status: 503 });
@@ -68,6 +72,15 @@ export async function PATCH(request: Request) {
     await requireRole(EDIT_INJURIES);
     const body = (await request.json()) as UpdateBody;
     const supabase = createAdminClient();
+
+    if (body.rtpTargetDate) {
+      const { data: existing } = await withTimeout(
+        supabase.from("injuries").select("onset_date").eq("injury_id", body.injuryId).maybeSingle()
+      );
+      if (existing && body.rtpTargetDate < existing.onset_date) {
+        return Response.json({ ok: false, error: "復帰予定日は受傷日より前に設定できません。" }, { status: 400 });
+      }
+    }
 
     const { error } = await withTimeout(
       supabase

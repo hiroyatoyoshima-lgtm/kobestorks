@@ -33,38 +33,40 @@ export default function CareChecklist({ rows, persist = false }: { rows: CareRow
   }
 
   return (
-    <table>
-      <thead>
-        <tr>
-          <th>時間</th>
-          <th>選手</th>
-          <th>内容</th>
-          <th>担当</th>
-          <th>実施</th>
-        </tr>
-      </thead>
-      <tbody>
-        {rows.map((r) => (
-          <tr key={r.id}>
-            <td>{r.time}</td>
-            <td>
-              <b>
-                #{r.playerNo} {r.playerName}
-              </b>
-            </td>
-            <td>{r.menu}</td>
-            <td>{r.staff}</td>
-            <td>
-              <input
-                type="checkbox"
-                className="chk"
-                checked={!!doneMap[r.id]}
-                onChange={(e) => toggle(r.id, e.target.checked)}
-              />
-            </td>
+    <div style={{ overflowX: "auto" }}>
+      <table>
+        <thead>
+          <tr>
+            <th>時間</th>
+            <th>選手</th>
+            <th>内容</th>
+            <th>担当</th>
+            <th>実施</th>
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {rows.map((r) => (
+            <tr key={r.id}>
+              <td style={{ whiteSpace: "nowrap" }}>{r.time}</td>
+              <td style={{ whiteSpace: "nowrap" }}>
+                <b>
+                  #{r.playerNo} {r.playerName}
+                </b>
+              </td>
+              <td style={{ minWidth: 140 }}>{r.menu}</td>
+              <td style={{ whiteSpace: "nowrap" }}>{r.staff}</td>
+              <td>
+                <input
+                  type="checkbox"
+                  className="chk"
+                  checked={!!doneMap[r.id]}
+                  onChange={(e) => toggle(r.id, e.target.checked)}
+                />
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }

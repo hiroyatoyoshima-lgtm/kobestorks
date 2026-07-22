@@ -10,10 +10,21 @@ const ROLE_LABEL: Record<string, string> = {
 
 export default function UserMenu({ email, role }: { email: string; role: string | null }) {
   return (
-    <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10 }}>
-      <div style={{ textAlign: "right" }}>
+    <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+      <div style={{ textAlign: "right", minWidth: 0, maxWidth: "40vw" }}>
         <div style={{ fontSize: 12.5, fontWeight: 600 }}>{role ? ROLE_LABEL[role] ?? role : "未登録"}</div>
-        <div style={{ fontSize: 10.5, color: "var(--muted)" }}>{email}</div>
+        <div
+          style={{
+            fontSize: 10.5,
+            color: "var(--muted)",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          }}
+          title={email}
+        >
+          {email}
+        </div>
       </div>
       <LogoutButton />
     </div>

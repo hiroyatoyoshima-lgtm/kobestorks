@@ -23,6 +23,10 @@ export default function InjuryForm({ players }: { players: Player[] }) {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setErrorMsg(null);
+    if (rtpTargetDate && rtpTargetDate < onsetDate) {
+      setErrorMsg("復帰予定日は受傷日より前に設定できません。");
+      return;
+    }
     setLoading(true);
     try {
       const res = await fetch("/api/injuries", {
@@ -104,7 +108,7 @@ export default function InjuryForm({ players }: { players: Player[] }) {
         <input type="text" value={rtpPhase} onChange={(e) => setRtpPhase(e.target.value)} placeholder="例:Phase 1:保護・治療" />
 
         <label>復帰予定日(任意)</label>
-        <input type="date" value={rtpTargetDate} onChange={(e) => setRtpTargetDate(e.target.value)} />
+        <input type="date" value={rtpTargetDate} min={onsetDate} onChange={(e) => setRtpTargetDate(e.target.value)} />
 
         <label>メモ(任意)</label>
         <textarea rows={2} value={note} onChange={(e) => setNote(e.target.value)} />

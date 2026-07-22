@@ -212,24 +212,26 @@ export default function KinexonImportForm() {
           )}
 
           {preview.affectedPlayerDates.length > 0 && (
-            <table className="mt">
-              <thead>
-                <tr>
-                  <th>選手</th>
-                  <th>日付</th>
-                  <th>Total AAL(取込み分)</th>
-                </tr>
-              </thead>
-              <tbody>
-                {preview.affectedPlayerDates.map((a, i) => (
-                  <tr key={i}>
-                    <td>{a.playerName}</td>
-                    <td>{a.date}</td>
-                    <td>{a.totalAal}</td>
+            <div className="mt" style={{ overflowX: "auto" }}>
+              <table>
+                <thead>
+                  <tr>
+                    <th>選手</th>
+                    <th>日付</th>
+                    <th>Total AAL(取込み分)</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {preview.affectedPlayerDates.map((a, i) => (
+                    <tr key={i}>
+                      <td style={{ whiteSpace: "nowrap" }}>{a.playerName}</td>
+                      <td style={{ whiteSpace: "nowrap" }}>{a.date}</td>
+                      <td style={{ whiteSpace: "nowrap" }}>{a.totalAal}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
 
           {!committed && (

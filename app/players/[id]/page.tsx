@@ -154,28 +154,30 @@ export default async function PlayerDetailPage({
         {history.length === 0 ? (
           <p className="note">まだケア記録・アンケートのコメントはありません。</p>
         ) : (
-          <table>
-            <thead>
-              <tr>
-                <th>日付</th>
-                <th>種別</th>
-                <th>内容</th>
-                <th>記録者</th>
-              </tr>
-            </thead>
-            <tbody>
-              {history.map((h, i) => (
-                <tr key={i}>
-                  <td>{h.date}</td>
-                  <td>
-                    <span className={`badge ${h.badge}`}>{h.type}</span>
-                  </td>
-                  <td>{h.content}</td>
-                  <td>{h.by}</td>
+          <div style={{ overflowX: "auto" }}>
+            <table>
+              <thead>
+                <tr>
+                  <th>日付</th>
+                  <th>種別</th>
+                  <th>内容</th>
+                  <th>記録者</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {history.map((h, i) => (
+                  <tr key={i}>
+                    <td style={{ whiteSpace: "nowrap" }}>{h.date}</td>
+                    <td style={{ whiteSpace: "nowrap" }}>
+                      <span className={`badge ${h.badge}`}>{h.type}</span>
+                    </td>
+                    <td style={{ minWidth: 160 }}>{h.content}</td>
+                    <td style={{ whiteSpace: "nowrap" }}>{h.by}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
     </>

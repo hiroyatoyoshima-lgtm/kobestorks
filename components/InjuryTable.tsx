@@ -202,11 +202,17 @@ function EditRow({ row, onDone, onCancel }: { row: Row; onDone: () => void; onCa
   const [rtpTargetDate, setRtpTargetDate] = useState(row.rtpTargetDate ?? "");
   const [note, setNote] = useState(row.note ?? "");
   const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   async function save() {
+    setErrorMsg(null);
+    if (rtpTargetDate && rtpTargetDate < row.onsetDate) {
+      setErrorMsg("復帰予定日は受傷日より前に設定できません。");
+      return;
+    }
     setLoading(true);
     try {
-      await fetch("/api/injuries", {
+      const res = await fetch("/api/injuries", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -217,7 +223,11 @@ function EditRow({ row, onDone, onCancel }: { row: Row; onDone: () => void; onCa
           note,
         }),
       });
+      const json = await res.json();
+      if (!json.ok) throw new Error(json.error ?? "保存に失敗しました");
       onDone();
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : "保存に失敗しました");
     } finally {
       setLoading(false);
     }
@@ -247,6 +257,7 @@ function EditRow({ row, onDone, onCancel }: { row: Row; onDone: () => void; onCa
         <input
           type="date"
           value={rtpTargetDate}
+          min={row.onsetDate}
           onChange={(e) => setRtpTargetDate(e.target.value)}
           style={{ padding: "4px 6px", width: 130 }}
         />
@@ -268,6 +279,11 @@ function EditRow({ row, onDone, onCancel }: { row: Row; onDone: () => void; onCa
             取消
           </button>
         </div>
+        {errorMsg && (
+          <p className="note" style={{ color: "var(--red)", marginTop: 4, whiteSpace: "nowrap" }}>
+            ⚠️ {errorMsg}
+          </p>
+        )}
       </td>
     </tr>
   );
