@@ -435,6 +435,7 @@ tbody tr:hover {
 }
 
 .back {
+  display: inline-block;
   background: var(--panel);
   border: 1px solid var(--border);
   color: var(--soft);
@@ -443,6 +444,7 @@ tbody tr:hover {
   cursor: pointer;
   margin-bottom: 14px;
   font-size: 12.5px;
+  text-decoration: none;
   transition: border-color 0.15s, color 0.15s;
 }
 .back:hover {
