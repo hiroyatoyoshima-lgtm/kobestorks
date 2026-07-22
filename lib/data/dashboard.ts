@@ -122,6 +122,7 @@ export interface DashboardData {
   teamLoadSeries: { aal: number[]; srpe: number[] };
   wellnessSeries: { distance: number[]; fatigue: number[] };
   alerts: DashboardAlert[];
+  alertsAreReal: boolean;
   playerComments: PlayerComment[] | null;
   dailyTable: {
     no: number;
@@ -297,6 +298,7 @@ export async function getDashboardData(date: string): Promise<DashboardData> {
       fatigue: fatigueSeries,
     },
     alerts,
+    alertsAreReal: anyRealLoad || hasRealWellnessToday,
     playerComments,
     dailyTable,
     comment: dailyComment ? dailyComment.comment ?? "" : COMMENT_TEMPLATES[seed % COMMENT_TEMPLATES.length],

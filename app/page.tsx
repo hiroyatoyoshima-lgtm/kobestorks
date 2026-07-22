@@ -81,7 +81,13 @@ export default async function DashboardPage({
       <div className="card mt">
         <h2 className="section-title">
           この日のアラート{" "}
-          <span style={{ fontSize: 11, color: "var(--muted)", fontWeight: 400 }}>※内容はダミー</span>
+          {data.alertsAreReal ? (
+            <span className="badge b-ok">実データ</span>
+          ) : (
+            <span style={{ fontSize: 11, color: "var(--muted)", fontWeight: 400 }}>
+              ※内容はダミー(Kinexon取込み・アンケート回答があると実データに切替)
+            </span>
+          )}
         </h2>
         {data.alerts.length === 0 ? (
           <p className="note">この日のアラートはありません</p>
