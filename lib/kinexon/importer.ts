@@ -5,7 +5,7 @@ import type { ParsedCsv } from "./csv";
 import { normalizeDate, normalizeName, type ColumnMapping } from "./mapping";
 import { dayType } from "../data/rng";
 import { intensityBand, targetAal } from "../calc";
-import { replaceSessionsForPlayerDate, upsertDailyLoad } from "../store/fileStore";
+import { replaceSessionsForPlayerDate, upsertDailyLoad } from "../data/kinexon-repo";
 import type { Player, SessionDrill } from "../types";
 import { DEFAULT_SETTINGS } from "../settings";
 
@@ -118,7 +118,7 @@ export function summarize(results: RowResult[]): ImportSummary {
 }
 
 // 同一date+player_idの再取込みは上書き(冪等)。daily_loadも合わせて自動再計算する(§5.7・§7)。
-export function commitImport(results: RowResult[], players: Player[]): ImportSummary {
+export async function commitImport(results: RowResult[], players: Player[]): Promise<ImportSummary> {
   const byPlayerDate = new Map<string, SessionDrill[]>();
   for (const r of results) {
     if (r.error || !r.playerId || !r.date || r.aal === null) continue;
@@ -138,14 +138,14 @@ export function commitImport(results: RowResult[], players: Player[]): ImportSum
 
   for (const [key, drills] of byPlayerDate) {
     const [playerId, date] = key.split("__");
-    replaceSessionsForPlayerDate(playerId, date, drills);
+    await replaceSessionsForPlayerDate(playerId, date, drills);
 
     const player = players.find((p) => p.playerId === playerId)!;
     const dt = dayType(date);
     const totalAal = drills.reduce((sum, d) => sum + d.aal, 0);
     const target = targetAal(player, dt, DEFAULT_SETTINGS);
     const deficit = totalAal - target;
-    upsertDailyLoad(playerId, date, {
+    await upsertDailyLoad(playerId, date, {
       totalAal: Math.round(totalAal),
       targetAal: target,
       deficitLoad: Math.round(deficit),

@@ -152,7 +152,9 @@ export async function getDashboardData(date: string): Promise<DashboardData> {
   const partCount = players.filter((p) => p.status === "part").length;
   const outCount = players.filter((p) => p.status === "out").length;
 
-  const loads = players.map((p) => ({ p, load: getEffectiveDailyLoad(p, date, dt, settings) }));
+  const loads = await Promise.all(
+    players.map(async (p) => ({ p, load: await getEffectiveDailyLoad(p, date, dt, settings) }))
+  );
   const anyRealLoad = loads.some(({ load }) => load.isReal);
 
   const teamAal = anyRealLoad
@@ -227,8 +229,9 @@ export async function getDashboardData(date: string): Promise<DashboardData> {
     // Kinexon実データ・ウェルネス実データのどちらか1件でもあれば、§6の実アラート判定に切り替える
     alerts = [];
     if (anyRealLoad) {
+      const computed = await computeAlerts(players, date, settings);
       alerts.push(
-        ...computeAlerts(players, date, settings).map((a) => {
+        ...computed.map((a) => {
           const p = players.find((pl) => pl.playerId === a.playerId)!;
           return {
             icon: a.severity === "alert" ? "🔴" : "🟡",

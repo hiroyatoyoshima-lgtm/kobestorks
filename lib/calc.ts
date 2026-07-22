@@ -5,7 +5,7 @@
 import type { AlertItem, DailyLoad, DayType, Player } from "./types";
 import { DEFAULT_SETTINGS, TeamSettings, type DailyIntensityBand } from "./settings";
 import { dateSeed } from "./data/rng";
-import { getDailyLoad as getStoredDailyLoad, getRecentTotalAal } from "./store/fileStore";
+import { getDailyLoad as getStoredDailyLoad, getRecentTotalAal } from "./data/kinexon-repo";
 
 export function targetAal(player: Player, dt: DayType, settings: TeamSettings = DEFAULT_SETTINGS): number {
   return Math.round(
@@ -56,11 +56,13 @@ export function computeDailyLoad(
   };
 }
 
-// Kinexon実データ(fileStore)から ACWR = 直近7日合計 ÷ 直近28日の7日平均、を計算する。
+// Kinexon実データ(Supabase daily_load)から ACWR = 直近7日合計 ÷ 直近28日の7日平均、を計算する。
 // 実データが十分に蓄積していない期間は null を返し、呼び出し側はダミー値にフォールバックする。
-export function acwrFromStore(playerId: string, date: string): number | null {
-  const recent7 = getRecentTotalAal(playerId, date, 7);
-  const recent28 = getRecentTotalAal(playerId, date, 28);
+export async function acwrFromStore(playerId: string, date: string): Promise<number | null> {
+  const [recent7, recent28] = await Promise.all([
+    getRecentTotalAal(playerId, date, 7),
+    getRecentTotalAal(playerId, date, 28),
+  ]);
   if (recent7.length < 3 || recent28.length < 7) return null;
   const acute7 = recent7.reduce((sum, d) => sum + d.totalAal, 0);
   const sum28 = recent28.reduce((sum, d) => sum + d.totalAal, 0);
@@ -70,17 +72,17 @@ export function acwrFromStore(playerId: string, date: string): number | null {
 }
 
 // その日の実測値(Kinexon取込み)があればそれを、無ければダミー値を返す(§11のダミー差替え設計)。
-export function getEffectiveDailyLoad(
+export async function getEffectiveDailyLoad(
   player: Player,
   date: string,
   dt: DayType,
   settings: TeamSettings = DEFAULT_SETTINGS
-): DailyLoad & { isReal: boolean } {
-  const stored = getStoredDailyLoad(player.playerId, date);
+): Promise<DailyLoad & { isReal: boolean }> {
+  const stored = await getStoredDailyLoad(player.playerId, date);
   if (!stored) {
     return { ...computeDailyLoad(player, date, dt, settings), isReal: false };
   }
-  const acwr = acwrFromStore(player.playerId, date) ?? pseudoAcwr(player, date);
+  const acwr = (await acwrFromStore(player.playerId, date)) ?? pseudoAcwr(player, date);
   const s = player.no * 7 + dateSeed(date);
   const srpe = +(1 + ((s * 11) % 40) / 10).toFixed(1); // Kinexonにはsrpe元データ(RPE)が無いため引き続きダミー
   return {
@@ -97,8 +99,8 @@ export function getEffectiveDailyLoad(
   };
 }
 
-export function effectiveTotalAal(player: Player, date: string): number {
-  const stored = getStoredDailyLoad(player.playerId, date);
+export async function effectiveTotalAal(player: Player, date: string): Promise<number> {
+  const stored = await getStoredDailyLoad(player.playerId, date);
   return stored ? stored.totalAal : pseudoTotalAal(player, date);
 }
 
@@ -109,9 +111,13 @@ export function acwrBadgeClass(acwr: number, settings: TeamSettings = DEFAULT_SE
 }
 
 // 負荷急増アラート(§6: load_spike_pct)。当日のTotal AALが、直近日平均に対してどれだけ急増したか。
-// Kinexon実データ(fileStore)が3日分以上無ければ判定しない(誤検知防止)。
-export function loadSpikeAlert(player: Player, date: string, settings: TeamSettings = DEFAULT_SETTINGS): AlertItem | null {
-  const recent = getRecentTotalAal(player.playerId, date, 8);
+// Kinexon実データが3日分以上無ければ判定しない(誤検知防止)。
+export async function loadSpikeAlert(
+  player: Player,
+  date: string,
+  settings: TeamSettings = DEFAULT_SETTINGS
+): Promise<AlertItem | null> {
+  const recent = await getRecentTotalAal(player.playerId, date, 8);
   const todayRow = recent.find((r) => r.date === date);
   if (!todayRow) return null;
   const priorRows = recent.filter((r) => r.date !== date);
@@ -134,14 +140,14 @@ export function loadSpikeAlert(player: Player, date: string, settings: TeamSetti
 }
 
 // 選手・日付ごとのアラート判定(§6)。ACWR・負荷急増の2種(ウェルネスは実データが別経路のためdashboard.tsで判定)。
-export function computeAlerts(
+export async function computeAlerts(
   players: Player[],
   date: string,
   settings: TeamSettings = DEFAULT_SETTINGS
-): AlertItem[] {
+): Promise<AlertItem[]> {
   const alerts: AlertItem[] = [];
   for (const p of players) {
-    const acwr = acwrFromStore(p.playerId, date) ?? pseudoAcwr(p, date);
+    const acwr = (await acwrFromStore(p.playerId, date)) ?? pseudoAcwr(p, date);
     if (acwr > settings.acwrAlert) {
       alerts.push({
         playerId: p.playerId,
@@ -162,7 +168,7 @@ export function computeAlerts(
       });
     }
 
-    const spike = loadSpikeAlert(p, date, settings);
+    const spike = await loadSpikeAlert(p, date, settings);
     if (spike) alerts.push(spike);
   }
   return alerts;

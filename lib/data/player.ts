@@ -110,12 +110,12 @@ export async function getInbodyData(
   return { latest, trend: dummyInbodyTrend(latest), isReal: false };
 }
 
-export function aalTrend(player: Player, anchorDate: string) {
+export async function aalTrend(player: Player, anchorDate: string) {
   const days = last14Days(anchorDate);
   return {
     labels: days.map(labelMD),
     // Kinexon取込み済みの日は実測値、未取込みの日はダミーで補完(§11の差替え可能設計)
-    values: days.map((d) => effectiveTotalAal(player, d)),
+    values: await Promise.all(days.map((d) => effectiveTotalAal(player, d))),
   };
 }
 

@@ -49,7 +49,7 @@ export default async function PlayerDetailPage({
   const injury = await getInjuryForPlayer(player.playerId);
   const { latest: ib, trend: ibTrend, isReal: inbodyIsReal, measuredDate } = await getInbodyData(player);
   const date = todayISO();
-  const aal = aalTrend(player, date);
+  const aal = await aalTrend(player, date);
   const wellness = await wellnessTrend(player, date);
   const history = await careHistory(player);
 

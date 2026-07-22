@@ -1,4 +1,4 @@
-import { listSyncLogs } from "@/lib/store/fileStore";
+import { listSyncLogs } from "@/lib/data/kinexon-repo";
 import KinexonImportForm from "@/components/KinexonImportForm";
 import InbodyImportForm from "@/components/InbodyImportForm";
 import { getCurrentUser } from "@/lib/auth/session";
@@ -16,7 +16,7 @@ export default async function KinexonPage() {
     );
   }
 
-  const logs = listSyncLogs();
+  const logs = await listSyncLogs();
 
   return (
     <>

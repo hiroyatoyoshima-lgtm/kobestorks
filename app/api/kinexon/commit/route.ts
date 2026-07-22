@@ -1,5 +1,5 @@
 import { commitImport, processCsv } from "@/lib/kinexon/importer";
-import { appendSyncLog } from "@/lib/store/fileStore";
+import { appendSyncLog } from "@/lib/data/kinexon-repo";
 import { ADMIN_ONLY, requireRole } from "@/lib/auth/permissions";
 import { getTeamPlayers } from "@/lib/data/players-repo";
 import type { ParsedCsv } from "@/lib/kinexon/csv";
@@ -16,9 +16,9 @@ export async function POST(request: Request) {
     };
     const { players } = await getTeamPlayers();
     const results = processCsv(body.parsed, body.mapping, players, body.sessionDate);
-    const summary = commitImport(results, players);
+    const summary = await commitImport(results, players);
 
-    appendSyncLog({
+    await appendSyncLog({
       id: `${Date.now()}`,
       ranAt: new Date().toISOString(),
       fileName: body.fileName ?? "(不明なファイル)",
