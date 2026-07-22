@@ -1,5 +1,6 @@
 import { commitImport, processCsv } from "@/lib/inbody/importer";
 import { ADMIN_ONLY, requireRole } from "@/lib/auth/permissions";
+import { getTeamPlayers } from "@/lib/data/players-repo";
 import type { ParsedCsv } from "@/lib/kinexon/csv";
 import type { ColumnMapping } from "@/lib/inbody/mapping";
 
@@ -7,7 +8,8 @@ export async function POST(request: Request) {
   try {
     await requireRole(ADMIN_ONLY);
     const body = (await request.json()) as { parsed: ParsedCsv; mapping: ColumnMapping };
-    const results = processCsv(body.parsed, body.mapping);
+    const { players } = await getTeamPlayers();
+    const results = processCsv(body.parsed, body.mapping, players);
     const summary = await commitImport(results);
     return Response.json(summary);
   } catch (e) {

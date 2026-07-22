@@ -1,11 +1,12 @@
 import type { Player } from "../types";
-import { PLAYERS, ALERT_MESSAGE_TEMPLATES, COMMENT_TEMPLATES, INJURIES } from "./seed";
+import { ALERT_MESSAGE_TEMPLATES, COMMENT_TEMPLATES, INJURIES } from "./seed";
 import { dateSeed, last14Days, labelMD, seededScale5, seededSeries, dayType, toISO } from "./rng";
 import { acwrBadgeClass, computeAlerts, getEffectiveDailyLoad, targetAal } from "../calc";
 import { DEFAULT_SETTINGS, type TeamSettings } from "../settings";
 import { compositeScore, getTeamWellnessForDate, getTeamWellnessRange, type WellnessRow } from "./wellness-repo";
 import { getDailyComment } from "./daily-comment-repo";
 import { getTeamSettings } from "./settings-repo";
+import { getTeamPlayers } from "./players-repo";
 
 export function todayISO(): string {
   return toISO(new Date());
@@ -144,13 +145,13 @@ export async function getDashboardData(date: string): Promise<DashboardData> {
   const dayLabels = days.map(labelMD);
   const dt = dayType(date);
 
-  const availableCount = PLAYERS.filter((p) => p.status !== "out").length;
-  const partCount = PLAYERS.filter((p) => p.status === "part").length;
-  const outCount = PLAYERS.filter((p) => p.status === "out").length;
+  const [{ players }, { settings }] = await Promise.all([getTeamPlayers(), getTeamSettings()]);
 
-  const { settings } = await getTeamSettings();
+  const availableCount = players.filter((p) => p.status !== "out").length;
+  const partCount = players.filter((p) => p.status === "part").length;
+  const outCount = players.filter((p) => p.status === "out").length;
 
-  const loads = PLAYERS.map((p) => ({ p, load: getEffectiveDailyLoad(p, date, dt, settings) }));
+  const loads = players.map((p) => ({ p, load: getEffectiveDailyLoad(p, date, dt, settings) }));
   const anyRealLoad = loads.some(({ load }) => load.isReal);
 
   const teamAal = anyRealLoad
@@ -172,7 +173,7 @@ export async function getDashboardData(date: string): Promise<DashboardData> {
   let surveyRate: string;
 
   if (wellnessToday) {
-    surveyRate = `${wellnessToday.size}/${PLAYERS.length}`;
+    surveyRate = `${wellnessToday.size}/${players.length}`;
     if (wellnessToday.size > 0) {
       const todayAvg =
         [...wellnessToday.values()].reduce((s, w) => s + compositeScore(w), 0) / wellnessToday.size;
@@ -197,7 +198,7 @@ export async function getDashboardData(date: string): Promise<DashboardData> {
     wellnessAvg = (3.2 + (seed % 12) / 10).toFixed(1);
     wellnessUp = seed % 3 !== 0;
     wellnessDelta = `${wellnessUp ? "▲" : "▼"} 前日比 ${wellnessUp ? "+" : "-"}0.${1 + (seed % 4)}`;
-    surveyRate = `${9 + (seed % 3)}/${PLAYERS.length}`;
+    surveyRate = `${9 + (seed % 3)}/${players.length}`;
   }
 
   // コメント・痛み申告があった選手だけ抜き出す(Supabase未接続時は null = 非表示)
@@ -205,7 +206,7 @@ export async function getDashboardData(date: string): Promise<DashboardData> {
     ? [...wellnessToday.values()]
         .filter((w) => w.painFlag || w.comment.trim() !== "")
         .map((w) => {
-          const p = PLAYERS.find((pl) => pl.playerId === w.playerId)!;
+          const p = players.find((pl) => pl.playerId === w.playerId)!;
           return { playerNo: p.no, playerName: p.nameJa, painFlag: w.painFlag, text: w.comment };
         })
     : null;
@@ -226,8 +227,8 @@ export async function getDashboardData(date: string): Promise<DashboardData> {
     alerts = [];
     if (anyRealLoad) {
       alerts.push(
-        ...computeAlerts(PLAYERS, date, settings).map((a) => {
-          const p = PLAYERS.find((pl) => pl.playerId === a.playerId)!;
+        ...computeAlerts(players, date, settings).map((a) => {
+          const p = players.find((pl) => pl.playerId === a.playerId)!;
           return {
             icon: a.severity === "alert" ? "🔴" : "🟡",
             cls: a.severity === "alert" ? "red" : "",
@@ -239,7 +240,7 @@ export async function getDashboardData(date: string): Promise<DashboardData> {
       );
     }
     if (hasRealWellnessToday && wellnessRange) {
-      for (const p of PLAYERS) {
+      for (const p of players) {
         alerts.push(...wellnessAlertsForPlayer(p, wellnessRange, date, settings));
       }
     }
@@ -247,7 +248,7 @@ export async function getDashboardData(date: string): Promise<DashboardData> {
     const alertCount = 2 + (seed % 2);
     alerts = [];
     for (let i = 0; i < alertCount; i++) {
-      const p = PLAYERS[(seed * 3 + i * 5) % PLAYERS.length];
+      const p = players[(seed * 3 + i * 5) % players.length];
       const t = ALERT_MESSAGE_TEMPLATES[(seed + i * 2) % ALERT_MESSAGE_TEMPLATES.length];
       alerts.push({
         icon: t.severity === "alert" ? "🔴" : "🟡",
@@ -277,7 +278,7 @@ export async function getDashboardData(date: string): Promise<DashboardData> {
     days,
     dayLabels,
     kpi: {
-      availablePlayers: `${availableCount}/${PLAYERS.length}`,
+      availablePlayers: `${availableCount}/${players.length}`,
       availableNote: `離脱${outCount}名・部分参加${partCount}名`,
       teamAal,
       teamAalDelta: `${teamAalUp ? "▲" : "▼"} 前週比 ${teamAalUp ? "+" : "-"}${3 + (seed % 9)}%`,

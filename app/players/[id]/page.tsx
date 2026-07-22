@@ -7,10 +7,10 @@ import {
   careHistory,
   getInbodyData,
   getInjuryForPlayer,
-  getPlayer,
   STATUS_LABEL,
   wellnessTrend,
 } from "@/lib/data/player";
+import { getTeamPlayer } from "@/lib/data/players-repo";
 import { todayISO } from "@/lib/data/dashboard";
 import BarLineChart from "@/components/charts/BarLineChart";
 import LineTrendChart from "@/components/charts/LineTrendChart";
@@ -32,7 +32,7 @@ export default async function PlayerDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const player = getPlayer(id);
+  const player = await getTeamPlayer(id);
   if (!player) notFound();
 
   const user = await getCurrentUser();
@@ -46,7 +46,7 @@ export default async function PlayerDetailPage({
     );
   }
 
-  const injury = getInjuryForPlayer(player.playerId);
+  const injury = await getInjuryForPlayer(player.playerId);
   const { latest: ib, trend: ibTrend, isReal: inbodyIsReal, measuredDate } = await getInbodyData(player);
   const date = todayISO();
   const aal = aalTrend(player, date);

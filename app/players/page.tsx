@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { PLAYERS, STATUS_LABEL } from "@/lib/data/seed";
+import { STATUS_LABEL } from "@/lib/data/seed";
+import { getTeamPlayers } from "@/lib/data/players-repo";
 import { getCurrentUser } from "@/lib/auth/session";
 import { VIEW_PLAYERS, hasRole, isPlayerRole } from "@/lib/auth/permissions";
 
@@ -27,6 +28,8 @@ export default async function PlayersPage() {
     );
   }
 
+  const { players } = await getTeamPlayers();
+
   return (
     <>
       <h2 className="section-title">
@@ -36,7 +39,7 @@ export default async function PlayersPage() {
         </span>
       </h2>
       <div className="players">
-        {PLAYERS.map((p) => (
+        {players.map((p) => (
           <Link key={p.playerId} href={`/players/${p.playerId}`} className="pcard" style={{ textDecoration: "none", color: "inherit" }}>
             <div className="avatar" style={{ background: p.color }}>
               {p.no}

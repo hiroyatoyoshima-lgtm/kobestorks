@@ -5,7 +5,7 @@
 import type { ParsedCsv } from "../kinexon/csv";
 import { normalizeDate, normalizeName } from "../kinexon/mapping";
 import type { ColumnMapping } from "./mapping";
-import { PLAYERS } from "../data/seed";
+import type { Player } from "../types";
 import { createAdminClient, withTimeout } from "../supabase/admin";
 import { getDefaultTeamId } from "../supabase/team";
 
@@ -31,9 +31,9 @@ export interface ImportSummary {
   rows: RowResult[];
 }
 
-function buildNameIndex() {
+function buildNameIndex(players: Player[]) {
   const idx = new Map<string, string>();
-  for (const p of PLAYERS) {
+  for (const p of players) {
     idx.set(normalizeName(p.nameKinexon), p.playerId);
     idx.set(normalizeName(p.nameJa), p.playerId);
   }
@@ -44,8 +44,8 @@ function toNumber(raw: string): number | null {
   return raw !== "" && !Number.isNaN(Number(raw)) ? Number(raw) : null;
 }
 
-export function processCsv(parsed: ParsedCsv, mapping: ColumnMapping): RowResult[] {
-  const nameIndex = buildNameIndex();
+export function processCsv(parsed: ParsedCsv, mapping: ColumnMapping, players: Player[]): RowResult[] {
+  const nameIndex = buildNameIndex(players);
 
   return parsed.rows.map((row, i) => {
     const rawDate = mapping.date ? row[mapping.date] : "";
@@ -72,7 +72,7 @@ export function processCsv(parsed: ParsedCsv, mapping: ColumnMapping): RowResult
       rawName,
       date,
       playerId,
-      playerName: playerId ? PLAYERS.find((p) => p.playerId === playerId)?.nameJa ?? null : null,
+      playerName: playerId ? players.find((p) => p.playerId === playerId)?.nameJa ?? null : null,
       weightKg,
       muscleMassKg,
       fatMassKg,

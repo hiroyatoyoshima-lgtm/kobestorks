@@ -1,18 +1,50 @@
-import { PLAYERS, INJURIES, STATUS_LABEL } from "./seed";
+import { INJURIES, STATUS_LABEL } from "./seed";
 import { last14Days, labelMD, seededSeries } from "./rng";
-import type { Player } from "../types";
+import type { Injury, InjuryStatus, Player } from "../types";
 import { effectiveTotalAal } from "../calc";
 import { compositeScore, getPlayerWellnessRange } from "./wellness-repo";
 import { createAdminClient, withTimeout } from "../supabase/admin";
 import { getDefaultTeamId } from "../supabase/team";
 import { getInbodyHistory } from "./inbody-repo";
 
-export function getPlayer(playerId: string): Player | undefined {
-  return PLAYERS.find((p) => p.playerId === playerId);
-}
-
-export function getInjuryForPlayer(playerId: string) {
-  return INJURIES.find((i) => i.playerId === playerId);
+// 復帰日(return_date)未確定=現在進行形の怪我のみを対象にする。過去に治った怪我は表示しない。
+// Supabase未接続・エラー時はダミー3件のうち該当選手のものにフォールバック。
+export async function getInjuryForPlayer(playerId: string): Promise<Injury | undefined> {
+  try {
+    const teamId = await getDefaultTeamId();
+    if (!teamId) throw new Error("no team");
+    const supabase = createAdminClient();
+    const { data, error } = await withTimeout(
+      supabase
+        .from("injuries")
+        .select("*")
+        .eq("team_id", teamId)
+        .eq("player_id", playerId)
+        .is("return_date", null)
+        .order("onset_date", { ascending: false })
+        .limit(1)
+        .maybeSingle()
+    );
+    if (error) throw error;
+    if (!data) return undefined;
+    return {
+      injuryId: data.injury_id,
+      playerId: data.player_id,
+      diagnosis: data.diagnosis,
+      bodyPart: data.body_part,
+      side: data.side ?? undefined,
+      onsetDate: data.onset_date,
+      mechanism: data.mechanism,
+      status: data.status as InjuryStatus,
+      rtpPhase: data.rtp_phase,
+      rtpTargetDate: data.rtp_target_date ?? undefined,
+      returnDate: data.return_date ?? undefined,
+      note: data.note ?? undefined,
+      updatedBy: data.updated_by,
+    };
+  } catch {
+    return INJURIES.find((i) => i.playerId === playerId);
+  }
 }
 
 export interface InbodyLatest {

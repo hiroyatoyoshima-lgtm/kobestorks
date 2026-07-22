@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { PLAYERS } from "@/lib/data/seed";
+import { getTeamPlayers } from "@/lib/data/players-repo";
 import { getCareCalendar, getInjuriesPageData } from "@/lib/data/injuries-repo";
 import { todayISO } from "@/lib/data/dashboard";
 import InjuryTable from "@/components/InjuryTable";
@@ -27,7 +27,8 @@ export default async function InjuriesPage() {
   }
   const canEdit = hasRole(user, EDIT_INJURIES);
 
-  const playerById = new Map(PLAYERS.map((p) => [p.playerId, p]));
+  const { players } = await getTeamPlayers();
+  const playerById = new Map(players.map((p) => [p.playerId, p]));
   const { injuries, careLogs, source } = await getInjuriesPageData(todayISO());
   const isLive = source === "supabase";
   const editable = isLive && canEdit;
@@ -60,7 +61,7 @@ export default async function InjuriesPage() {
   const injuredPlayerIds = [...new Set(injuries.map((i) => i.playerId))];
   const injuredPlayers = injuredPlayerIds
     .map((id) => playerById.get(id))
-    .filter((p): p is (typeof PLAYERS)[number] => !!p);
+    .filter((p): p is NonNullable<typeof p> => !!p);
   const careCalendarRaw = isLive ? await getCareCalendar(injuredPlayerIds, monthStart, monthEnd) : null;
 
   const careCalendar: Record<string, Record<string, CalendarEntry[]>> | undefined = careCalendarRaw
@@ -88,7 +89,7 @@ export default async function InjuriesPage() {
 
       {editable ? (
         <div className="mt">
-          <InjuryForm players={PLAYERS} />
+          <InjuryForm players={players} />
         </div>
       ) : !isLive ? (
         <p className="note mt">Supabase未接続のため、新規登録・編集はできません(表示のみ)。</p>

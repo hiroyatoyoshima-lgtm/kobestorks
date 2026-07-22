@@ -1,13 +1,14 @@
-import { PLAYERS } from "@/lib/data/seed";
+import { getTeamPlayers } from "@/lib/data/players-repo";
 import { getCurrentUser } from "@/lib/auth/session";
 import { isPlayerRole } from "@/lib/auth/permissions";
 import SurveyForm from "@/components/SurveyForm";
 
 export default async function SurveyPage() {
   const user = await getCurrentUser();
+  const { players } = await getTeamPlayers();
 
   if (isPlayerRole(user)) {
-    const player = PLAYERS.find((p) => p.playerId === user!.playerId);
+    const player = players.find((p) => p.playerId === user!.playerId);
     if (!player) {
       return (
         <div className="card" style={{ maxWidth: 480 }}>
@@ -15,7 +16,7 @@ export default async function SurveyPage() {
         </div>
       );
     }
-    return <SurveyForm players={PLAYERS} lockedPlayer={player} />;
+    return <SurveyForm players={players} lockedPlayer={player} />;
   }
 
   // admin/プラットフォーム管理者は代理入力(選手を選んで送信)ができる。それ以外の職員は対象外。
@@ -27,5 +28,5 @@ export default async function SurveyPage() {
     );
   }
 
-  return <SurveyForm players={PLAYERS} />;
+  return <SurveyForm players={players} />;
 }

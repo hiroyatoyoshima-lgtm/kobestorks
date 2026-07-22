@@ -3,11 +3,10 @@
 
 import type { ParsedCsv } from "./csv";
 import { normalizeDate, normalizeName, type ColumnMapping } from "./mapping";
-import { PLAYERS } from "../data/seed";
 import { dayType } from "../data/rng";
 import { intensityBand, targetAal } from "../calc";
 import { replaceSessionsForPlayerDate, upsertDailyLoad } from "../store/fileStore";
-import type { SessionDrill } from "../types";
+import type { Player, SessionDrill } from "../types";
 import { DEFAULT_SETTINGS } from "../settings";
 
 export interface RowResult {
@@ -30,17 +29,17 @@ export interface ImportSummary {
   rows: RowResult[];
 }
 
-function buildNameIndex() {
+function buildNameIndex(players: Player[]) {
   const idx = new Map<string, string>(); // normalized name -> playerId
-  for (const p of PLAYERS) {
+  for (const p of players) {
     idx.set(normalizeName(p.nameKinexon), p.playerId);
     idx.set(normalizeName(p.nameJa), p.playerId);
   }
   return idx;
 }
 
-export function processCsv(parsed: ParsedCsv, mapping: ColumnMapping): RowResult[] {
-  const nameIndex = buildNameIndex();
+export function processCsv(parsed: ParsedCsv, mapping: ColumnMapping, players: Player[]): RowResult[] {
+  const nameIndex = buildNameIndex(players);
   const results: RowResult[] = [];
 
   parsed.rows.forEach((row, i) => {
@@ -64,7 +63,7 @@ export function processCsv(parsed: ParsedCsv, mapping: ColumnMapping): RowResult
       rawName,
       date,
       playerId,
-      playerName: playerId ? PLAYERS.find((p) => p.playerId === playerId)?.nameJa ?? null : null,
+      playerName: playerId ? players.find((p) => p.playerId === playerId)?.nameJa ?? null : null,
       drillName,
       aal,
       error,
@@ -105,7 +104,7 @@ export function summarize(results: RowResult[]): ImportSummary {
 }
 
 // 同一date+player_idの再取込みは上書き(冪等)。daily_loadも合わせて自動再計算する(§5.7・§7)。
-export function commitImport(results: RowResult[]): ImportSummary {
+export function commitImport(results: RowResult[], players: Player[]): ImportSummary {
   const byPlayerDate = new Map<string, SessionDrill[]>();
   for (const r of results) {
     if (r.error || !r.playerId || !r.date || r.aal === null) continue;
@@ -127,7 +126,7 @@ export function commitImport(results: RowResult[]): ImportSummary {
     const [playerId, date] = key.split("__");
     replaceSessionsForPlayerDate(playerId, date, drills);
 
-    const player = PLAYERS.find((p) => p.playerId === playerId)!;
+    const player = players.find((p) => p.playerId === playerId)!;
     const dt = dayType(date);
     const totalAal = drills.reduce((sum, d) => sum + d.aal, 0);
     const target = targetAal(player, dt, DEFAULT_SETTINGS);
