@@ -52,6 +52,7 @@ export default function KinexonImportForm() {
   const [committed, setCommitted] = useState<ImportSummary | null>(null);
   const [loading, setLoading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   function loadFile(file: File) {
     setFileName(file.name);
@@ -83,6 +84,7 @@ export default function KinexonImportForm() {
 
   async function runPreview() {
     if (!parsed) return;
+    setErrorMsg(null);
     setLoading(true);
     setCommitted(null);
     try {
@@ -91,7 +93,12 @@ export default function KinexonImportForm() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ parsed, mapping, sessionDate: mapping.date ? undefined : sessionDate }),
       });
-      setPreview(await res.json());
+      const json = await res.json();
+      if (json.ok === false) throw new Error(json.error ?? "処理に失敗しました");
+      setPreview(json);
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : "処理に失敗しました");
+      setPreview(null);
     } finally {
       setLoading(false);
     }
@@ -99,6 +106,7 @@ export default function KinexonImportForm() {
 
   async function runCommit() {
     if (!parsed) return;
+    setErrorMsg(null);
     setLoading(true);
     try {
       const res = await fetch("/api/kinexon/commit", {
@@ -112,8 +120,11 @@ export default function KinexonImportForm() {
         }),
       });
       const summary = await res.json();
+      if (summary.ok === false) throw new Error(summary.error ?? "取込みに失敗しました");
       setCommitted(summary);
       setPreview(summary);
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : "取込みに失敗しました");
     } finally {
       setLoading(false);
     }
@@ -153,6 +164,13 @@ export default function KinexonImportForm() {
           </p>
         )}
       </div>
+
+      {errorMsg && (
+        <div className="alert red mt">
+          <span>⚠️</span>
+          <div>{errorMsg}</div>
+        </div>
+      )}
 
       {parsed && (
         <div className="card mt">

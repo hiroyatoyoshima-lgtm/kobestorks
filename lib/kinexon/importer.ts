@@ -175,27 +175,31 @@ export async function commitImport(results: RowResult[], players: Player[]): Pro
     byPlayerDate.set(key, list);
   }
 
-  for (const [key, drills] of byPlayerDate) {
-    const [playerId, date] = key.split("__");
-    await replaceSessionsForPlayerDate(playerId, date, drills);
+  // 選手×日付ごとの書き込みは互いに独立しているため並列化する(逐次実行だとサーバーレス関数の
+  // タイムアウトに引っかかりやすいため)。
+  await Promise.all(
+    [...byPlayerDate.entries()].map(async ([key, drills]) => {
+      const [playerId, date] = key.split("__");
+      await replaceSessionsForPlayerDate(playerId, date, drills);
 
-    const player = players.find((p) => p.playerId === playerId)!;
-    const dt = dayType(date);
-    const totalAal = drills.reduce((sum, d) => sum + d.aal, 0);
-    const drillsWithDistance = drills.filter((d) => d.distanceM !== undefined);
-    const totalDistanceM =
-      drillsWithDistance.length > 0 ? drillsWithDistance.reduce((sum, d) => sum + d.distanceM!, 0) : null;
-    const target = targetAal(player, dt, DEFAULT_SETTINGS);
-    const deficit = totalAal - target;
-    await upsertDailyLoad(playerId, date, {
-      totalAal: Math.round(totalAal),
-      targetAal: target,
-      deficitLoad: Math.round(deficit),
-      deficitMin: deficit < 0 ? +(Math.abs(deficit) / 20).toFixed(1) : 0,
-      intensityBand: intensityBand(totalAal, DEFAULT_SETTINGS),
-      totalDistanceM: totalDistanceM !== null ? Math.round(totalDistanceM) : null,
-    });
-  }
+      const player = players.find((p) => p.playerId === playerId)!;
+      const dt = dayType(date);
+      const totalAal = drills.reduce((sum, d) => sum + d.aal, 0);
+      const drillsWithDistance = drills.filter((d) => d.distanceM !== undefined);
+      const totalDistanceM =
+        drillsWithDistance.length > 0 ? drillsWithDistance.reduce((sum, d) => sum + d.distanceM!, 0) : null;
+      const target = targetAal(player, dt, DEFAULT_SETTINGS);
+      const deficit = totalAal - target;
+      await upsertDailyLoad(playerId, date, {
+        totalAal: Math.round(totalAal),
+        targetAal: target,
+        deficitLoad: Math.round(deficit),
+        deficitMin: deficit < 0 ? +(Math.abs(deficit) / 20).toFixed(1) : 0,
+        intensityBand: intensityBand(totalAal, DEFAULT_SETTINGS),
+        totalDistanceM: totalDistanceM !== null ? Math.round(totalDistanceM) : null,
+      });
+    })
+  );
 
   return summarize(results);
 }
