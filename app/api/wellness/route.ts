@@ -1,4 +1,5 @@
-import { createAdminClient, withTimeout } from "@/lib/supabase/admin";
+import { withTimeout } from "@/lib/supabase/admin";
+import { createClient as createServerSupabase } from "@/lib/supabase/server";
 import { getDefaultTeamId } from "@/lib/supabase/team";
 import { getCurrentUser } from "@/lib/auth/session";
 
@@ -38,7 +39,9 @@ export async function POST(request: Request) {
       throw new Error("チーム情報が見つかりません(Supabaseに接続できない可能性があります)。");
     }
 
-    const supabase = createAdminClient();
+    // 要配慮情報のため、ログイン中ユーザーのセッションでアクセスしてRLSにも判定させる
+    // (アプリ側の権限チェックに加えた二重の壁。§9)。
+    const supabase = await createServerSupabase();
     const today = new Date().toISOString().slice(0, 10);
 
     // (team_id, player_id, date) が一致する行は上書き(§5.6: 当日再送信は上書き)

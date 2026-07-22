@@ -1,4 +1,5 @@
-import { createAdminClient, withTimeout } from "../supabase/admin";
+import { withTimeout } from "../supabase/admin";
+import { createClient as createServerSupabase } from "../supabase/server";
 import { getDefaultTeamId } from "../supabase/team";
 
 export interface WellnessRow {
@@ -55,7 +56,7 @@ export async function getTeamWellnessForDate(date: string): Promise<Map<string, 
   try {
     const teamId = await getDefaultTeamId();
     if (!teamId) return null;
-    const supabase = createAdminClient();
+    const supabase = await createServerSupabase();
     const { data, error } = await withTimeout(
       supabase.from("wellness").select("*").eq("team_id", teamId).eq("date", date)
     );
@@ -76,7 +77,7 @@ export async function getTeamWellnessRange(
   try {
     const teamId = await getDefaultTeamId();
     if (!teamId) return null;
-    const supabase = createAdminClient();
+    const supabase = await createServerSupabase();
     const { data, error } = await withTimeout(
       supabase
         .from("wellness")
@@ -108,7 +109,7 @@ export async function getPlayerWellnessRange(
   try {
     const teamId = await getDefaultTeamId();
     if (!teamId) return null;
-    const supabase = createAdminClient();
+    const supabase = await createServerSupabase();
     const { data, error } = await withTimeout(
       supabase
         .from("wellness")

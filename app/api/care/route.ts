@@ -1,4 +1,5 @@
-import { createAdminClient, withTimeout } from "@/lib/supabase/admin";
+import { withTimeout } from "@/lib/supabase/admin";
+import { createClient as createServerSupabase } from "@/lib/supabase/server";
 import { getDefaultTeamId } from "@/lib/supabase/team";
 import { EDIT_INJURIES, requireRole } from "@/lib/auth/permissions";
 
@@ -20,7 +21,7 @@ export async function POST(request: Request) {
       return Response.json({ ok: false, error: "チーム情報が見つかりません(Supabaseに接続できない可能性があります)。" }, { status: 503 });
     }
 
-    const supabase = createAdminClient();
+    const supabase = await createServerSupabase();
     const today = new Date().toISOString().slice(0, 10);
 
     const { error } = await withTimeout(
@@ -47,7 +48,7 @@ export async function PATCH(request: Request) {
   try {
     await requireRole(EDIT_INJURIES);
     const { careId, done } = (await request.json()) as { careId: string; done: boolean };
-    const supabase = createAdminClient();
+    const supabase = await createServerSupabase();
     const { error } = await withTimeout(supabase.from("care_log").update({ done }).eq("care_id", careId));
     if (error) return Response.json({ ok: false, error: error.message }, { status: 500 });
     return Response.json({ ok: true });

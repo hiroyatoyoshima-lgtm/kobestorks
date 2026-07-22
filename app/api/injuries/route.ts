@@ -1,4 +1,5 @@
-import { createAdminClient, withTimeout } from "@/lib/supabase/admin";
+import { withTimeout } from "@/lib/supabase/admin";
+import { createClient as createServerSupabase } from "@/lib/supabase/server";
 import { getDefaultTeamId } from "@/lib/supabase/team";
 import { EDIT_INJURIES, requireRole } from "@/lib/auth/permissions";
 
@@ -31,7 +32,8 @@ export async function POST(request: Request) {
       return Response.json({ ok: false, error: "チーム情報が見つかりません(Supabaseに接続できない可能性があります)。" }, { status: 503 });
     }
 
-    const supabase = createAdminClient();
+    // 要配慮情報のため、ログイン中ユーザーのセッションでアクセスしてRLSにも判定させる。
+    const supabase = await createServerSupabase();
     const { error } = await withTimeout(
       supabase.from("injuries").insert({
         team_id: teamId,
@@ -71,7 +73,7 @@ export async function PATCH(request: Request) {
   try {
     await requireRole(EDIT_INJURIES);
     const body = (await request.json()) as UpdateBody;
-    const supabase = createAdminClient();
+    const supabase = await createServerSupabase();
 
     if (body.rtpTargetDate) {
       const { data: existing } = await withTimeout(

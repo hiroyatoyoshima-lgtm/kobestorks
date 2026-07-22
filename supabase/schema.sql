@@ -320,15 +320,16 @@ create policy wellness_select on wellness
     team_id = auth_team_id()
     and (auth_role() != 'player' or player_id = auth_player_id())
   );
+-- 書き込みはadmin(代理入力)か、選手本人のみ(§3・なりすまし防止)。閲覧は他ロールにも開く。
 create policy wellness_insert on wellness
   for insert with check (
     team_id = auth_team_id()
-    and (auth_role() != 'player' or player_id = auth_player_id())
+    and (auth_role() = 'admin' or (auth_role() = 'player' and player_id = auth_player_id()))
   );
 create policy wellness_update on wellness
   for update using (
     team_id = auth_team_id()
-    and (auth_role() != 'player' or player_id = auth_player_id())
+    and (auth_role() = 'admin' or (auth_role() = 'player' and player_id = auth_player_id()))
   );
 
 -- injuries: 要配慮情報。player は自分のみ、coach/nutritionは閲覧のみ、admin/medicalは編集可(§3)

@@ -1,4 +1,5 @@
-import { createAdminClient, withTimeout } from "../supabase/admin";
+import { withTimeout } from "../supabase/admin";
+import { createClient as createServerSupabase } from "../supabase/server";
 import { getDefaultTeamId } from "../supabase/team";
 import type { CareLog, Injury, InjuryStatus } from "../types";
 
@@ -13,7 +14,9 @@ export async function getInjuriesPageData(dateIso: string): Promise<InjuriesPage
   try {
     const teamId = await getDefaultTeamId();
     if (!teamId) throw new Error("team not found");
-    const supabase = createAdminClient();
+    // 要配慮情報(§9)のため、管理者権限で全件取得するのではなく、ログイン中ユーザーの
+    // セッションでアクセスしてRLS(§8)にも判定させる(アプリ側のロールチェックの二重の壁)。
+    const supabase = await createServerSupabase();
 
     // 復帰日(return_date)が入っている=治療完了した怪我は一覧に出さない(player.statusの導出と揃える)。
     const [injuriesRes, careRes] = await Promise.all([
@@ -76,7 +79,7 @@ export async function getCareCalendar(
   try {
     const teamId = await getDefaultTeamId();
     if (!teamId) return null;
-    const supabase = createAdminClient();
+    const supabase = await createServerSupabase();
     const { data, error } = await withTimeout(
       supabase
         .from("care_log")

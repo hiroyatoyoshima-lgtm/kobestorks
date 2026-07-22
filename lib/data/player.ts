@@ -3,7 +3,8 @@ import { last14Days, labelMD } from "./rng";
 import type { Injury, InjuryStatus, Player } from "../types";
 import { effectiveTotalAal } from "../calc";
 import { compositeScore, getPlayerWellnessRange } from "./wellness-repo";
-import { createAdminClient, withTimeout } from "../supabase/admin";
+import { withTimeout } from "../supabase/admin";
+import { createClient as createServerSupabase } from "../supabase/server";
 import { getDefaultTeamId } from "../supabase/team";
 import { getInbodyHistory } from "./inbody-repo";
 
@@ -12,7 +13,8 @@ export async function getInjuryForPlayer(playerId: string): Promise<Injury | und
   try {
     const teamId = await getDefaultTeamId();
     if (!teamId) throw new Error("no team");
-    const supabase = createAdminClient();
+    // 要配慮情報のため、ログイン中ユーザーのセッションでアクセスしてRLSにも判定させる。
+    const supabase = await createServerSupabase();
     const { data, error } = await withTimeout(
       supabase
         .from("injuries")
@@ -125,7 +127,7 @@ export async function careHistory(player: Player, limit = 8): Promise<HistoryRow
   try {
     const teamId = await getDefaultTeamId();
     if (!teamId) throw new Error("no team");
-    const supabase = createAdminClient();
+    const supabase = await createServerSupabase();
 
     const [careRes, wellnessRes] = await Promise.all([
       withTimeout(
