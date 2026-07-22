@@ -38,22 +38,36 @@ function buildNameIndex(players: Player[]) {
   return idx;
 }
 
-export function processCsv(parsed: ParsedCsv, mapping: ColumnMapping, players: Player[]): RowResult[] {
+// Kinexonのエクスポートは末尾に「⌀ All players」のようなチーム平均の集計行を含むことがある。
+// 選手ではないためエラー扱いにせず、取込み対象から静かに除外する。
+function isTeamSummaryRow(rawName: string): boolean {
+  return /all players/i.test(rawName);
+}
+
+export function processCsv(
+  parsed: ParsedCsv,
+  mapping: ColumnMapping,
+  players: Player[],
+  sessionDate?: string
+): RowResult[] {
   const nameIndex = buildNameIndex(players);
   const results: RowResult[] = [];
 
   parsed.rows.forEach((row, i) => {
-    const rawDate = mapping.date ? row[mapping.date] : "";
     const rawName = mapping.playerNameKinexon ? row[mapping.playerNameKinexon] : "";
+    if (isTeamSummaryRow(rawName)) return;
+
+    // 列に日付があればそちらを優先、無ければ取込み画面で指定した対象日を使う(§5.7)
+    const rawDate = mapping.date ? row[mapping.date] : "";
     const rawAal = mapping.aal ? row[mapping.aal] : "";
     const drillName = (mapping.drillName ? row[mapping.drillName] : "") || "セッション";
 
-    const date = rawDate ? normalizeDate(rawDate) : null;
+    const date = rawDate ? normalizeDate(rawDate) : sessionDate || null;
     const playerId = rawName ? nameIndex.get(normalizeName(rawName)) ?? null : null;
     const aal = rawAal !== "" && !Number.isNaN(Number(rawAal)) ? Number(rawAal) : null;
 
     let error: string | undefined;
-    if (!date) error = "日付を解釈できません";
+    if (!date) error = "日付を解釈できません(対象日が未指定です)";
     else if (!rawName) error = "選手名が空です";
     else if (!playerId) error = `未登録の選手名: ${rawName}(選手マスタのname_kinexonと不一致)`;
     else if (aal === null) error = "AALが数値ではありません";

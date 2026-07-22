@@ -12,9 +12,10 @@ export async function POST(request: Request) {
       parsed: ParsedCsv;
       mapping: ColumnMapping;
       fileName?: string;
+      sessionDate?: string;
     };
     const { players } = await getTeamPlayers();
-    const results = processCsv(body.parsed, body.mapping, players);
+    const results = processCsv(body.parsed, body.mapping, players, body.sessionDate);
     const summary = commitImport(results, players);
 
     appendSyncLog({

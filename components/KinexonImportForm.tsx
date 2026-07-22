@@ -39,6 +39,7 @@ export default function KinexonImportForm() {
   const [fileName, setFileName] = useState<string>("");
   const [parsed, setParsed] = useState<ParsedCsv | null>(null);
   const [mapping, setMapping] = useState<ColumnMapping>({});
+  const [sessionDate, setSessionDate] = useState<string>(() => new Date().toISOString().slice(0, 10));
   const [preview, setPreview] = useState<ImportSummary | null>(null);
   const [committed, setCommitted] = useState<ImportSummary | null>(null);
   const [loading, setLoading] = useState(false);
@@ -62,7 +63,12 @@ export default function KinexonImportForm() {
     if (file) loadFile(file);
   }
 
-  const missingRequired = REQUIRED_FIELDS.filter((f) => !mapping[f]);
+  // Kinexonのエクスポートには日付列が無いことが多いため、列マッピングが無ければ
+  // 「対象日」の指定を必須にする(§5.7)
+  const missingRequired = [
+    ...REQUIRED_FIELDS.filter((f) => !mapping[f]),
+    ...(!mapping.date && !sessionDate ? (["date"] as MappingField[]) : []),
+  ];
 
   async function runPreview() {
     if (!parsed) return;
@@ -72,7 +78,7 @@ export default function KinexonImportForm() {
       const res = await fetch("/api/kinexon/preview", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ parsed, mapping }),
+        body: JSON.stringify({ parsed, mapping, sessionDate: mapping.date ? undefined : sessionDate }),
       });
       setPreview(await res.json());
     } finally {
@@ -87,7 +93,12 @@ export default function KinexonImportForm() {
       const res = await fetch("/api/kinexon/commit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ parsed, mapping, fileName }),
+        body: JSON.stringify({
+          parsed,
+          mapping,
+          fileName,
+          sessionDate: mapping.date ? undefined : sessionDate,
+        }),
       });
       const summary = await res.json();
       setCommitted(summary);
@@ -131,6 +142,23 @@ export default function KinexonImportForm() {
           </p>
         )}
       </div>
+
+      {parsed && (
+        <div className="card mt">
+          <h2 className="section-title">対象日</h2>
+          <p className="note" style={{ marginBottom: 10 }}>
+            Kinexonのエクスポートには日付列が無いことが多いため、このCSVがどの日のデータかを指定してください
+            (CSVに日付列があり下でマッピングした場合はそちらが優先されます)。
+          </p>
+          <input
+            type="date"
+            value={sessionDate}
+            disabled={!!mapping.date}
+            onChange={(e) => setSessionDate(e.target.value)}
+            style={{ maxWidth: 200 }}
+          />
+        </div>
+      )}
 
       {parsed && (
         <div className="card mt">

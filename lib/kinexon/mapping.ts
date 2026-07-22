@@ -13,10 +13,12 @@ export type MappingField =
   | "decelCount"
   | "jumpCount";
 
-export const REQUIRED_FIELDS: MappingField[] = ["date", "playerNameKinexon", "aal"];
+// Kinexonのセッション別エクスポートには日付列が無いことが多いため、dateは列マッピングではなく
+// 取込み画面で直接指定する運用に変更(§5.7)。CSVに日付列がある場合はここでマッピングしてもよい。
+export const REQUIRED_FIELDS: MappingField[] = ["playerNameKinexon", "aal"];
 
 export const FIELD_LABELS: Record<MappingField, string> = {
-  date: "日付(必須)",
+  date: "日付(列がある場合のみ。無ければ下の「対象日」を使用)",
   playerNameKinexon: "選手名 / Kinexon表記(必須)",
   aal: "AAL(必須)",
   drillName: "ドリル名",
