@@ -56,6 +56,23 @@ export default function PlayerManagement({ players, source }: { players: Player[
     }
   }
 
+  async function handleDelete(playerId: string, nameJa: string) {
+    if (!confirm(`${nameJa}選手を完全に削除しますか?(まだデータが無い選手のみ削除できます)`)) return;
+    setErrorMsg(null);
+    try {
+      const res = await fetch("/api/players", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ playerId }),
+      });
+      const json = await res.json();
+      if (!json.ok) throw new Error(json.error ?? "削除に失敗しました");
+      router.refresh();
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : "削除に失敗しました");
+    }
+  }
+
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
     setErrorMsg(null);
@@ -102,6 +119,7 @@ export default function PlayerManagement({ players, source }: { players: Player[
               <th>ポジション</th>
               <th>グループ</th>
               <th>在籍</th>
+              <th></th>
             </tr>
           </thead>
           <tbody>
@@ -139,11 +157,16 @@ export default function PlayerManagement({ players, source }: { players: Player[
                     onChange={(e) => patchPlayer(p.playerId, { active: e.target.checked })}
                   />
                 </td>
+                <td>
+                  <button className="back" style={{ margin: 0 }} onClick={() => handleDelete(p.playerId, p.nameJa)}>
+                    削除
+                  </button>
+                </td>
               </tr>
             ))}
             {players.length === 0 && (
               <tr>
-                <td colSpan={6} className="note">
+                <td colSpan={7} className="note">
                   まだ選手が登録されていません。
                 </td>
               </tr>
@@ -151,7 +174,8 @@ export default function PlayerManagement({ players, source }: { players: Player[
           </tbody>
         </table>
         <p className="note">
-          「在籍」のチェックを外すと、ダッシュボード等の一覧には出なくなります(データは削除されません)。
+          「在籍」のチェックを外すと、ダッシュボード等の一覧には出なくなります(データは削除されません)。削除は、
+          怪我・ウェルネス等のデータがまだ何も無い選手(入力ミスの取り消し等)のみ実行できます。
         </p>
       </div>
 

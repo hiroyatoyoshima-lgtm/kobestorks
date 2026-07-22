@@ -1,4 +1,4 @@
-import { createPlayer, updatePlayer, type PlayerInput } from "@/lib/data/players-repo";
+import { createPlayer, deletePlayer, updatePlayer, type PlayerInput } from "@/lib/data/players-repo";
 import { ADMIN_ONLY, requireRole } from "@/lib/auth/permissions";
 
 export async function POST(request: Request) {
@@ -21,5 +21,16 @@ export async function PATCH(request: Request) {
     return Response.json({ ok: true });
   } catch (e) {
     return Response.json({ ok: false, error: e instanceof Error ? e.message : "更新に失敗しました" }, { status: 400 });
+  }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    await requireRole(ADMIN_ONLY);
+    const { playerId } = (await request.json()) as { playerId: string };
+    await deletePlayer(playerId);
+    return Response.json({ ok: true });
+  } catch (e) {
+    return Response.json({ ok: false, error: e instanceof Error ? e.message : "削除に失敗しました" }, { status: 400 });
   }
 }

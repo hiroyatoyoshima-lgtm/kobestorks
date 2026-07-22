@@ -151,3 +151,47 @@ export async function updatePlayer(playerId: string, patch: Partial<PlayerInput>
   );
   if (error) throw new Error(error.message);
 }
+
+// 選手に紐づくデータが1件でもあるテーブル(§4のFK参照先すべて+ログインアカウント)。
+const LINKED_DATA_TABLES: { table: string; label: string }[] = [
+  { table: "sessions", label: "Kinexonセッション" },
+  { table: "daily_load", label: "日次負荷データ" },
+  { table: "wellness", label: "コンディションアンケート" },
+  { table: "injuries", label: "怪我記録" },
+  { table: "care_log", label: "ケア記録" },
+  { table: "inbody", label: "InBody記録" },
+  { table: "decisions", label: "判断ログ" },
+];
+
+// 入力ミスの取り消し用。何かデータが1件でも紐づいている選手は削除させない
+// (履歴を巻き込んで壊れる/FK制約でエラーになるのを避ける。その場合は在籍チェックを外す運用にする)。
+export async function deletePlayer(playerId: string): Promise<void> {
+  const teamId = await getDefaultTeamId();
+  if (!teamId) throw new Error("チーム情報が見つかりません(Supabaseに接続できない可能性があります)。");
+  const supabase = createAdminClient();
+
+  for (const { table, label } of LINKED_DATA_TABLES) {
+    const { count, error } = await withTimeout(
+      supabase.from(table).select("*", { count: "exact", head: true }).eq("team_id", teamId).eq("player_id", playerId)
+    );
+    if (error) throw new Error(error.message);
+    if (count && count > 0) {
+      throw new Error(`削除できません: ${label}が${count}件既に登録されています。在籍チェックを外して非表示にしてください。`);
+    }
+  }
+
+  const { data: userRow, error: userErr } = await withTimeout(
+    supabase.from("users").select("email").eq("team_id", teamId).eq("player_id", playerId).maybeSingle()
+  );
+  if (userErr) throw new Error(userErr.message);
+  if (userRow) {
+    throw new Error(
+      `削除できません: この選手に紐づくログインアカウント(${userRow.email})があります。先にユーザー管理で紐付けを解除してください。`
+    );
+  }
+
+  const { error } = await withTimeout(
+    supabase.from("players").delete().eq("team_id", teamId).eq("player_id", playerId)
+  );
+  if (error) throw new Error(error.message);
+}
