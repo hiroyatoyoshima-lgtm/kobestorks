@@ -9,6 +9,7 @@ export interface WellnessRow {
   fatigue: number;
   soreness: number;
   stress: number;
+  rpe: number | null;
   painFlag: boolean;
   comment: string;
 }
@@ -21,6 +22,7 @@ interface WellnessDb {
   fatigue: number;
   soreness: number;
   stress: number;
+  rpe: number | null;
   pain_flag: boolean;
   comment: string | null;
 }
@@ -34,6 +36,7 @@ function toRow(r: WellnessDb): WellnessRow {
     fatigue: r.fatigue,
     soreness: r.soreness,
     stress: r.stress,
+    rpe: r.rpe ?? null,
     painFlag: r.pain_flag,
     comment: r.comment ?? "",
   };

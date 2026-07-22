@@ -9,6 +9,7 @@ interface WellnessBody {
   fatigue: number;
   soreness: number;
   stress: number;
+  rpe?: number | null;
   painFlag: boolean;
   comment?: string;
 }
@@ -52,6 +53,7 @@ export async function POST(request: Request) {
           fatigue: body.fatigue,
           soreness: body.soreness,
           stress: body.stress,
+          rpe: body.rpe ?? null,
           pain_flag: body.painFlag,
           pain_note: body.painFlag ? body.comment ?? null : null,
           comment: body.comment ?? null,

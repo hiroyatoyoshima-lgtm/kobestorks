@@ -117,7 +117,7 @@ export interface DashboardData {
     wellnessUp: boolean;
     surveyRate: string;
   };
-  teamLoadSeries: { aal: (number | null)[]; srpe: (number | null)[] };
+  teamLoadSeries: { aal: (number | null)[]; rpe: (number | null)[] };
   wellnessSeries: { distance: (number | null)[]; fatigue: (number | null)[] };
   alerts: DashboardAlert[];
   alertsAreReal: boolean;
@@ -210,6 +210,13 @@ export async function getDashboardData(date: string): Promise<DashboardData> {
     return null;
   });
 
+  // RPE(練習後アンケートの主観的きつさ)。未入力の選手はその日の平均から除外する。
+  const rpeSeries = days.map((d) => {
+    const rows = wellnessRange?.get(d)?.filter((w) => w.rpe !== null) ?? [];
+    if (rows.length === 0) return null;
+    return +(rows.reduce((s, w) => s + w.rpe!, 0) / rows.length).toFixed(1);
+  });
+
   const distanceSeries = days.map((d) => loadSeriesRange.distance.get(d) ?? null);
   const teamAalSeries = days.map((d) => loadSeriesRange.aal.get(d) ?? null);
 
@@ -266,8 +273,9 @@ export async function getDashboardData(date: string): Promise<DashboardData> {
     },
     teamLoadSeries: {
       aal: teamAalSeries,
-      // sRPEは実データ源(選手ごとのRPE入力)が未実装のため常にnull(§7: 専用入力を作るまで計算不可)
-      srpe: days.map(() => null),
+      // チーム平均RPE(練習後アンケートより)。セッション時間との掛け算(真のsRPE)は
+      // Kinexonのセッション時間データが未整備のため、現時点ではRPEそのものを表示する。
+      rpe: rpeSeries,
     },
     wellnessSeries: {
       distance: distanceSeries,

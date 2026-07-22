@@ -3,13 +3,16 @@
 export default function ScaleInput({
   value,
   onChange,
+  max = 5,
 }: {
   value: number;
   onChange: (v: number) => void;
+  max?: number;
 }) {
+  const options = Array.from({ length: max }, (_, i) => i + 1);
   return (
     <div className="scale">
-      {[1, 2, 3, 4, 5].map((n) => (
+      {options.map((n) => (
         <button
           key={n}
           type="button"

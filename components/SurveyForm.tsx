@@ -11,6 +11,7 @@ export default function SurveyForm({ players, lockedPlayer }: { players: Player[
   const [fatigue, setFatigue] = useState(3);
   const [soreness, setSoreness] = useState(3);
   const [stress, setStress] = useState(3);
+  const [rpe, setRpe] = useState<number | null>(null);
   const [painFlag, setPainFlag] = useState(false);
   const [comment, setComment] = useState("");
   const [toast, setToast] = useState(false);
@@ -32,6 +33,7 @@ export default function SurveyForm({ players, lockedPlayer }: { players: Player[
           fatigue,
           soreness,
           stress,
+          rpe,
           painFlag,
           comment,
         }),
@@ -87,6 +89,12 @@ export default function SurveyForm({ players, lockedPlayer }: { players: Player[
 
           <label>ストレス(1=高い 〜 5=低い)</label>
           <ScaleInput value={stress} onChange={setStress} />
+
+          <label>
+            今日の練習/試合のきつさ(RPE) 1=非常に楽 〜 10=非常にきつい{" "}
+            <span style={{ fontWeight: 400, color: "var(--muted)" }}>(任意・練習が無い日は空欄でOK)</span>
+          </label>
+          <ScaleInput value={rpe ?? 0} onChange={setRpe} max={10} />
 
           <label style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 14 }}>
             <input
