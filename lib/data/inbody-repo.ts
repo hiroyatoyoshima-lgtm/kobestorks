@@ -9,6 +9,45 @@ export interface InbodyRow {
   fatPct: number;
 }
 
+export interface InbodyEntry {
+  playerId: string;
+  weightKg: number | null;
+  muscleMassKg: number | null;
+  fatMassKg: number | null;
+  fatPct: number | null;
+}
+
+// 測定日を1つ指定し、その日の全選手分をまとめて直接入力する(CSV取込みが使えない不定形の
+// スプレッドシートからでも、値を見ながら人力で転記できるようにするための経路)。
+// 4項目とも空の行は保存しない(未測定として扱う)。同一date+player_idの再入力は上書き(冪等)。
+export async function saveInbodyEntries(date: string, entries: InbodyEntry[]): Promise<void> {
+  const rows = entries.filter(
+    (e) => e.weightKg !== null || e.muscleMassKg !== null || e.fatMassKg !== null || e.fatPct !== null
+  );
+  if (rows.length === 0) return;
+
+  const teamId = await getDefaultTeamId();
+  if (!teamId) throw new Error("チーム情報が見つかりません(Supabaseに接続できない可能性があります)。");
+  const supabase = createAdminClient();
+
+  const { error } = await withTimeout(
+    supabase.from("inbody").upsert(
+      rows.map((e) => ({
+        team_id: teamId,
+        player_id: e.playerId,
+        date,
+        weight_kg: e.weightKg,
+        muscle_mass_kg: e.muscleMassKg,
+        fat_mass_kg: e.fatMassKg,
+        fat_pct: e.fatPct,
+        source: "app",
+      })),
+      { onConflict: "team_id,player_id,date" }
+    )
+  );
+  if (error) throw new Error(error.message);
+}
+
 // 直近6回分(取込み日降順)。null = Supabase未接続/エラー(呼び出し側でダミーにフォールバック)。
 export async function getInbodyHistory(playerId: string, limit = 6): Promise<InbodyRow[] | null> {
   try {

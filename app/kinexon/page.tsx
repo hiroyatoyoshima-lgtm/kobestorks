@@ -1,6 +1,8 @@
 import { listSyncLogs } from "@/lib/data/kinexon-repo";
+import { getTeamPlayers } from "@/lib/data/players-repo";
 import KinexonImportForm from "@/components/KinexonImportForm";
 import InbodyImportForm from "@/components/InbodyImportForm";
+import InbodyEntryForm from "@/components/InbodyEntryForm";
 import { getCurrentUser } from "@/lib/auth/session";
 import { ADMIN_ONLY, hasRole } from "@/lib/auth/permissions";
 
@@ -17,6 +19,7 @@ export default async function KinexonPage() {
   }
 
   const logs = await listSyncLogs();
+  const { players } = await getTeamPlayers();
 
   return (
     <>
@@ -65,9 +68,17 @@ export default async function KinexonPage() {
       </div>
 
       <h2 className="section-title mt" style={{ marginTop: 32 }}>
-        InBody取込み{" "}
+        InBody 直接入力{" "}
         <span style={{ fontSize: 12, color: "var(--muted)", fontWeight: 400 }}>
-          管理者用・体組成計/スプシからのCSVエクスポートに対応
+          管理者用・体組成計の値を見ながら手入力(不定形のスプレッドシートに対応しやすい)
+        </span>
+      </h2>
+      <InbodyEntryForm players={players} />
+
+      <h2 className="section-title mt" style={{ marginTop: 32 }}>
+        InBody CSV取込み{" "}
+        <span style={{ fontSize: 12, color: "var(--muted)", fontWeight: 400 }}>
+          管理者用・体組成計から「1行=1選手・1測定日」形式でエクスポートできる場合はこちら
         </span>
       </h2>
       <InbodyImportForm />
