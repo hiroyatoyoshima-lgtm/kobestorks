@@ -46,6 +46,7 @@ export default function KinexonImportForm() {
   const [fileName, setFileName] = useState<string>("");
   const [parsed, setParsed] = useState<ParsedCsv | null>(null);
   const [mapping, setMapping] = useState<ColumnMapping>({});
+  const [mappingExpanded, setMappingExpanded] = useState(false);
   const [sessionDate, setSessionDate] = useState<string>(() => new Date().toISOString().slice(0, 10));
   const [preview, setPreview] = useState<ImportSummary | null>(null);
   const [committed, setCommitted] = useState<ImportSummary | null>(null);
@@ -58,8 +59,11 @@ export default function KinexonImportForm() {
     setCommitted(null);
     file.text().then((text) => {
       const p = parseCsv(text);
+      const guessed = guessMapping(p.headers);
       setParsed(p);
-      setMapping(guessMapping(p.headers));
+      setMapping(guessed);
+      // 必須項目が自動認識できなかった場合のみ、最初から列マッピングを開いておく
+      setMappingExpanded(REQUIRED_FIELDS.some((f) => !guessed[f]));
     });
   }
 
@@ -167,7 +171,28 @@ export default function KinexonImportForm() {
         </div>
       )}
 
-      {parsed && (
+      {parsed && !mappingExpanded && (
+        <div className="card mt">
+          <h2 className="section-title">列マッピング(自動認識)</h2>
+          <p className="note" style={{ marginBottom: 10 }}>
+            {FIELD_ORDER.filter((f) => mapping[f]).length}項目を自動でマッピングしました。内容が正しければそのままプレビューへ進めます。
+          </p>
+          <div className="note" style={{ marginBottom: 10 }}>
+            {FIELD_ORDER.filter((f) => mapping[f])
+              .map((f) => `${FIELD_LABELS[f].replace(/(\(必須\)|\(.*?\))/g, "")}→${mapping[f]}`)
+              .join(" / ")}
+          </div>
+          <button type="button" className="back" style={{ marginBottom: 14 }} onClick={() => setMappingExpanded(true)}>
+            列マッピングを確認・変更する
+          </button>
+          <br />
+          <button className="submit" type="button" disabled={missingRequired.length > 0 || loading} onClick={runPreview}>
+            {loading ? "処理中..." : "プレビュー"}
+          </button>
+        </div>
+      )}
+
+      {parsed && mappingExpanded && (
         <div className="card mt">
           <h2 className="section-title">列マッピング</h2>
           <p className="note" style={{ marginBottom: 10 }}>
@@ -198,14 +223,22 @@ export default function KinexonImportForm() {
             </p>
           )}
 
-          <button
-            className="submit"
-            type="button"
-            disabled={missingRequired.length > 0 || loading}
-            onClick={runPreview}
-          >
-            {loading ? "処理中..." : "プレビュー"}
-          </button>
+          <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+            <button
+              className="submit"
+              type="button"
+              disabled={missingRequired.length > 0 || loading}
+              style={{ marginTop: 0 }}
+              onClick={runPreview}
+            >
+              {loading ? "処理中..." : "プレビュー"}
+            </button>
+            {missingRequired.length === 0 && (
+              <button type="button" className="back" style={{ marginBottom: 0 }} onClick={() => setMappingExpanded(false)}>
+                閉じる
+              </button>
+            )}
+          </div>
         </div>
       )}
 
