@@ -124,7 +124,13 @@ export default function UserManagement({ users, players }: { users: TeamUserView
                   <select
                     value={u.role}
                     style={{ padding: "4px 6px", width: 170 }}
-                    onChange={(e) => patchUser(u.userId, { role: e.target.value as Role })}
+                    onChange={(e) => {
+                      const role = e.target.value as Role;
+                      // 選手ロールに切り替えた際、選手が未紐付けなら先頭の選手を仮に割り当てる
+                      // (紐付け忘れでplayer_idがnullのまま保存されるのを防ぐ。すぐ隣のセレクトで変更可能)
+                      const playerId = role === "player" ? u.playerId ?? players[0]?.playerId ?? null : u.playerId;
+                      patchUser(u.userId, { role, playerId });
+                    }}
                   >
                     {ROLE_OPTIONS.map((r) => (
                       <option key={r.value} value={r.value}>
@@ -137,9 +143,10 @@ export default function UserManagement({ users, players }: { users: TeamUserView
                   {u.role === "player" ? (
                     <select
                       value={u.playerId ?? ""}
-                      style={{ padding: "4px 6px", width: 130 }}
+                      style={{ padding: "4px 6px", width: 130, borderColor: u.playerId ? undefined : "var(--red)" }}
                       onChange={(e) => patchUser(u.userId, { playerId: e.target.value })}
                     >
+                      {!u.playerId && <option value="">未選択(選んでください)</option>}
                       {players.map((p) => (
                         <option key={p.playerId} value={p.playerId}>
                           #{p.no} {p.nameJa}

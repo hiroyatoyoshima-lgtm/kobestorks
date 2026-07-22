@@ -6,7 +6,7 @@ import LogoutButton from "@/components/LogoutButton";
 import { getCurrentUser } from "@/lib/auth/session";
 
 export const metadata: Metadata = {
-  title: "STORKS Performance Hub",
+  title: "Athrens",
   description: "神戸ストークス パフォーマンスチーム データ管理",
 };
 
@@ -53,7 +53,7 @@ export default async function RootLayout({
               <header className="topbar">
                 <div className="logo">KS</div>
                 <div>
-                  <h1>STORKS Performance Hub</h1>
+                  <h1>Athrens</h1>
                   <div className="sub">神戸ストークス パフォーマンスチーム データ管理</div>
                 </div>
                 {user && <UserMenu email={user.email} role={user.role} />}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
 export default function LoginPage() {
@@ -8,6 +8,17 @@ export default function LoginPage() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [email, setEmail] = useState("");
   const [magicLinkSent, setMagicLinkSent] = useState(false);
+
+  // /auth/callback でのセッション交換に失敗した場合(別ブラウザでリンクを開いた等)、
+  // ?error=callback_failed 付きでここに戻ってくるので理由を表示する。
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("error") === "callback_failed") {
+      setErrorMsg(
+        "ログインリンクの確認に失敗しました。メール記載のリンクは、送信をリクエストしたのと同じブラウザで開いてください。もう一度お試しいただくか、Googleログインをご利用ください。"
+      );
+    }
+  }, []);
 
   async function handleGoogleLogin() {
     setErrorMsg(null);
@@ -33,7 +44,11 @@ export default function LoginPage() {
       const supabase = createClient();
       const { error } = await supabase.auth.signInWithOtp({
         email,
-        options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          // 管理者が事前登録したアカウントのみログインリンクを送る(未登録メールでの新規作成を防ぐ)
+          shouldCreateUser: false,
+        },
       });
       if (error) throw error;
       setMagicLinkSent(true);
@@ -50,7 +65,7 @@ export default function LoginPage() {
         <div className="logo" style={{ margin: "0 auto 16px" }}>
           KS
         </div>
-        <h1 style={{ fontSize: 17, fontWeight: 700, marginBottom: 6 }}>STORKS Performance Hub</h1>
+        <h1 style={{ fontSize: 17, fontWeight: 700, marginBottom: 6 }}>Athrens</h1>
         <p className="note" style={{ marginBottom: 24 }}>
           チームアカウントでログインしてください
         </p>
