@@ -1,13 +1,12 @@
 import type { Player } from "../types";
-import { ALERT_MESSAGE_TEMPLATES, COMMENT_TEMPLATES, INJURIES } from "./seed";
-import { dateSeed, last14Days, labelMD, seededScale5, seededSeries, dayType, toISO } from "./rng";
+import { last14Days, labelMD, dayType, toISO } from "./rng";
 import { acwrBadgeClass, computeAlerts, getEffectiveDailyLoad, targetAal } from "../calc";
 import { DEFAULT_SETTINGS, type TeamSettings } from "../settings";
 import { compositeScore, getTeamWellnessForDate, getTeamWellnessRange, type WellnessRow } from "./wellness-repo";
 import { getDailyComment } from "./daily-comment-repo";
 import { getTeamSettings } from "./settings-repo";
 import { getTeamPlayers } from "./players-repo";
-import { getTeamDistanceRange } from "./kinexon-repo";
+import { getTeamLoadSeriesRange } from "./kinexon-repo";
 
 export function todayISO(): string {
   return toISO(new Date());
@@ -112,29 +111,27 @@ export interface DashboardData {
   kpi: {
     availablePlayers: string;
     availableNote: string;
-    teamAal: number;
-    teamAalDelta: string;
-    teamAalUp: boolean;
+    teamAal: number | null;
     wellnessAvg: string;
-    wellnessDelta: string;
+    wellnessDelta: string | null;
     wellnessUp: boolean;
     surveyRate: string;
   };
-  teamLoadSeries: { aal: number[]; srpe: number[] };
-  wellnessSeries: { distance: number[]; fatigue: number[] };
+  teamLoadSeries: { aal: (number | null)[]; srpe: (number | null)[] };
+  wellnessSeries: { distance: (number | null)[]; fatigue: (number | null)[] };
   alerts: DashboardAlert[];
   alertsAreReal: boolean;
   playerComments: PlayerComment[] | null;
   dailyTable: {
     no: number;
     name: string;
-    total: number;
+    total: number | null;
     target: number;
-    diff: number;
+    diff: number | null;
     minsLabel: string;
-    intensity: string;
-    acwr: string;
-    acwrBadge: string;
+    intensity: string | null;
+    acwr: string | null;
+    acwrBadge: string | null;
   }[];
   comment: string;
   commentEditable: boolean;
@@ -142,7 +139,6 @@ export interface DashboardData {
 }
 
 export async function getDashboardData(date: string): Promise<DashboardData> {
-  const seed = dateSeed(date);
   const days = last14Days(date);
   const dayLabels = days.map(labelMD);
   const dt = dayType(date);
@@ -157,25 +153,24 @@ export async function getDashboardData(date: string): Promise<DashboardData> {
     players.map(async (p) => ({ p, load: await getEffectiveDailyLoad(p, date, dt, settings) }))
   );
   const anyRealLoad = loads.some(({ load }) => load.isReal);
+  const realLoads = loads.filter(({ load }) => load.isReal && load.totalAal !== null);
+  const teamAal =
+    realLoads.length > 0
+      ? Math.round(realLoads.reduce((sum, { load }) => sum + load.totalAal!, 0) / realLoads.length)
+      : null;
 
-  const teamAal = anyRealLoad
-    ? Math.round(loads.reduce((sum, { load }) => sum + load.totalAal, 0) / loads.length)
-    : 350 + (seed % 150);
-  const teamAalUp = seed % 2 === 1;
-
-  // ── ウェルネス(実データ優先。Supabase未接続時のみダミー) ──
-  const [wellnessToday, wellnessYesterday, wellnessRange, dailyComment, distanceRange] = await Promise.all([
+  const [wellnessToday, wellnessYesterday, wellnessRange, dailyComment, loadSeriesRange] = await Promise.all([
     getTeamWellnessForDate(date),
     getTeamWellnessForDate(prevDayISO(date)),
     getTeamWellnessRange(days[0], days[days.length - 1]),
     getDailyComment(date),
-    getTeamDistanceRange(days[0], days[days.length - 1]),
+    getTeamLoadSeriesRange(days[0], days[days.length - 1]),
   ]);
 
-  let wellnessAvg: string;
-  let wellnessDelta: string;
-  let wellnessUp: boolean;
-  let surveyRate: string;
+  let wellnessAvg = "—";
+  let wellnessDelta: string | null = null;
+  let wellnessUp = true;
+  let surveyRate = "—";
 
   if (wellnessToday) {
     surveyRate = `${wellnessToday.size}/${players.length}`;
@@ -190,20 +185,11 @@ export async function getDashboardData(date: string): Promise<DashboardData> {
         wellnessUp = diff >= 0;
         wellnessDelta = `${wellnessUp ? "▲" : "▼"} 前日比 ${wellnessUp ? "+" : ""}${diff.toFixed(1)}`;
       } else {
-        wellnessUp = true;
         wellnessDelta = `本日 ${wellnessToday.size}名回答`;
       }
     } else {
-      wellnessAvg = "—";
-      wellnessUp = true;
       wellnessDelta = "本日の回答はまだありません";
     }
-  } else {
-    // Supabase未接続時のダミー
-    wellnessAvg = (3.2 + (seed % 12) / 10).toFixed(1);
-    wellnessUp = seed % 3 !== 0;
-    wellnessDelta = `${wellnessUp ? "▲" : "▼"} 前日比 ${wellnessUp ? "+" : "-"}0.${1 + (seed % 4)}`;
-    surveyRate = `${9 + (seed % 3)}/${players.length}`;
   }
 
   // コメント・痛み申告があった選手だけ抜き出す(Supabase未接続時は null = 非表示)
@@ -216,59 +202,39 @@ export async function getDashboardData(date: string): Promise<DashboardData> {
         })
     : null;
 
-  const fatigueSeries = days.map((d, i) => {
+  const fatigueSeries = days.map((d) => {
     const rows = wellnessRange?.get(d);
     if (rows && rows.length > 0) {
       return +(rows.reduce((s, w) => s + w.fatigue, 0) / rows.length).toFixed(1);
     }
-    return seededScale5(9, 3.4, days, seed)[i];
+    return null;
   });
 
-  const distanceSeries = days.map((d, i) => {
-    const real = distanceRange.get(d);
-    if (real !== undefined) return real;
-    return seededSeries(23, 3800, 1400, days)[i];
-  });
+  const distanceSeries = days.map((d) => loadSeriesRange.distance.get(d) ?? null);
+  const teamAalSeries = days.map((d) => loadSeriesRange.aal.get(d) ?? null);
 
   const hasRealWellnessToday = !!wellnessToday && wellnessToday.size > 0;
 
-  let alerts: DashboardAlert[];
-  if (anyRealLoad || hasRealWellnessToday) {
-    // Kinexon実データ・ウェルネス実データのどちらか1件でもあれば、§6の実アラート判定に切り替える
-    alerts = [];
-    if (anyRealLoad) {
-      const computed = await computeAlerts(players, date, settings);
-      alerts.push(
-        ...computed.map((a) => {
-          const p = players.find((pl) => pl.playerId === a.playerId)!;
-          return {
-            icon: a.severity === "alert" ? "🔴" : "🟡",
-            cls: a.severity === "alert" ? "red" : "",
-            playerNo: p.no,
-            playerName: p.nameJa,
-            text: a.message,
-          } as DashboardAlert;
-        })
-      );
-    }
-    if (hasRealWellnessToday && wellnessRange) {
-      for (const p of players) {
-        alerts.push(...wellnessAlertsForPlayer(p, wellnessRange, date, settings));
-      }
-    }
-  } else {
-    const alertCount = 2 + (seed % 2);
-    alerts = [];
-    for (let i = 0; i < alertCount; i++) {
-      const p = players[(seed * 3 + i * 5) % players.length];
-      const t = ALERT_MESSAGE_TEMPLATES[(seed + i * 2) % ALERT_MESSAGE_TEMPLATES.length];
-      alerts.push({
-        icon: t.severity === "alert" ? "🔴" : "🟡",
-        cls: t.severity === "alert" ? "red" : "",
-        playerNo: p.no,
-        playerName: p.nameJa,
-        text: t.text,
-      });
+  // アラートは実データがある時だけ計算する。実データが無ければ空(ダミーのアラートは出さない)。
+  const alerts: DashboardAlert[] = [];
+  if (anyRealLoad) {
+    const computed = await computeAlerts(players, date, settings);
+    alerts.push(
+      ...computed.map((a) => {
+        const p = players.find((pl) => pl.playerId === a.playerId)!;
+        return {
+          icon: a.severity === "alert" ? "🔴" : "🟡",
+          cls: a.severity === "alert" ? "red" : "",
+          playerNo: p.no,
+          playerName: p.nameJa,
+          text: a.message,
+        } as DashboardAlert;
+      })
+    );
+  }
+  if (hasRealWellnessToday && wellnessRange) {
+    for (const p of players) {
+      alerts.push(...wellnessAlertsForPlayer(p, wellnessRange, date, settings));
     }
   }
 
@@ -278,10 +244,10 @@ export async function getDashboardData(date: string): Promise<DashboardData> {
     total: load.totalAal,
     target: load.targetAal,
     diff: load.deficitLoad,
-    minsLabel: load.deficitLoad < 0 ? `${load.deficitMin}min` : "0min",
+    minsLabel: load.deficitMin !== null && load.deficitLoad !== null && load.deficitLoad < 0 ? `${load.deficitMin}min` : "0min",
     intensity: load.intensityBand,
-    acwr: load.acwr.toFixed(2),
-    acwrBadge: acwrBadgeClass(load.acwr, settings),
+    acwr: load.acwr !== null ? load.acwr.toFixed(2) : null,
+    acwrBadge: load.acwr !== null ? acwrBadgeClass(load.acwr, settings) : null,
   }));
 
   return {
@@ -293,16 +259,15 @@ export async function getDashboardData(date: string): Promise<DashboardData> {
       availablePlayers: `${availableCount}/${players.length}`,
       availableNote: `離脱${outCount}名・部分参加${partCount}名`,
       teamAal,
-      teamAalDelta: `${teamAalUp ? "▲" : "▼"} 前週比 ${teamAalUp ? "+" : "-"}${3 + (seed % 9)}%`,
-      teamAalUp,
       wellnessAvg,
       wellnessDelta,
       wellnessUp,
       surveyRate,
     },
     teamLoadSeries: {
-      aal: seededSeries(7, 400, 180, days),
-      srpe: seededScale5(4, 3.0, days, seed),
+      aal: teamAalSeries,
+      // sRPEは実データ源(選手ごとのRPE入力)が未実装のため常にnull(§7: 専用入力を作るまで計算不可)
+      srpe: days.map(() => null),
     },
     wellnessSeries: {
       distance: distanceSeries,
@@ -312,17 +277,12 @@ export async function getDashboardData(date: string): Promise<DashboardData> {
     alertsAreReal: anyRealLoad || hasRealWellnessToday,
     playerComments,
     dailyTable,
-    comment: dailyComment ? dailyComment.comment ?? "" : COMMENT_TEMPLATES[seed % COMMENT_TEMPLATES.length],
+    comment: dailyComment?.comment ?? "",
     commentEditable: !!dailyComment,
     // このフラグは「デイリーレポート」表内のKinexon由来の数値(Total AAL・ACWR等)が
-    // 実データかどうかだけを表す。wellnessToday は空Mapでも truthy になるため含めない
-    // (Supabaseに繋がっているだけでKinexon実データ扱いになるバグがあったため修正)。
+    // 実データかどうかだけを表す。wellnessToday は空Mapでも truthy になるため含めない。
     usingRealData: anyRealLoad,
   };
-}
-
-export function injuryCountForBadge() {
-  return INJURIES.length;
 }
 
 export { targetAal, DEFAULT_SETTINGS };

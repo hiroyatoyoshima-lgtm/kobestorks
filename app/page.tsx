@@ -41,8 +41,8 @@ export default async function DashboardPage({
         </div>
         <div className="card">
           <div className="lbl">チーム平均 AAL</div>
-          <div className="num">{data.kpi.teamAal}</div>
-          <div className={`delta ${data.kpi.teamAalUp ? "up" : "down"}`}>{data.kpi.teamAalDelta}</div>
+          <div className="num">{data.kpi.teamAal ?? "—"}</div>
+          {!data.kpi.teamAal && <div className="delta warn">Kinexonデータなし</div>}
         </div>
         <div className="card">
           <div className="lbl">ウェルネス平均</div>
@@ -50,7 +50,9 @@ export default async function DashboardPage({
             <span>{data.kpi.wellnessAvg}</span>
             <span style={{ fontSize: 14, color: "var(--muted)" }}>/5</span>
           </div>
-          <div className={`delta ${data.kpi.wellnessUp ? "up" : "down"}`}>{data.kpi.wellnessDelta}</div>
+          {data.kpi.wellnessDelta && (
+            <div className={`delta ${data.kpi.wellnessUp ? "up" : "down"}`}>{data.kpi.wellnessDelta}</div>
+          )}
         </div>
         <div className="card">
           <div className="lbl">アンケート回答</div>
@@ -81,16 +83,14 @@ export default async function DashboardPage({
       <div className="card mt">
         <h2 className="section-title">
           この日のアラート{" "}
-          {data.alertsAreReal ? (
-            <span className="badge b-ok">実データ</span>
-          ) : (
-            <span style={{ fontSize: 11, color: "var(--muted)", fontWeight: 400 }}>
-              ※内容はダミー(Kinexon取込み・アンケート回答があると実データに切替)
-            </span>
-          )}
+          {data.alertsAreReal && <span className="badge b-ok">実データ</span>}
         </h2>
         {data.alerts.length === 0 ? (
-          <p className="note">この日のアラートはありません</p>
+          <p className="note">
+            {data.alertsAreReal
+              ? "この日のアラートはありません"
+              : "この日はKinexon・アンケートの実データがまだ無いため判定できません"}
+          </p>
         ) : (
           data.alerts.map((a, i) => (
             <div key={i} className={`alert ${a.cls}`}>
@@ -136,13 +136,7 @@ export default async function DashboardPage({
       <div className="card mt" style={{ overflowX: "auto" }}>
         <h2 className="section-title">
           デイリーレポート(選手別サマリー){" "}
-          {data.usingRealData ? (
-            <span className="badge b-ok">Kinexon実データ反映中</span>
-          ) : (
-            <span style={{ fontSize: 11, color: "var(--muted)", fontWeight: 400 }}>
-              ※数値はダミー。Kinexon取込み(管理者)で実データに切替
-            </span>
-          )}
+          {data.usingRealData && <span className="badge b-ok">Kinexon実データ反映中</span>}
         </h2>
         <table>
           <thead>
@@ -164,17 +158,14 @@ export default async function DashboardPage({
                     #{row.no} {row.name}
                   </b>
                 </td>
-                <td>{row.total}</td>
+                <td>{row.total ?? "—"}</td>
                 <td>{row.target}</td>
-                <td style={{ color: row.diff < 0 ? "var(--red)" : "var(--green)" }}>
-                  {row.diff > 0 ? "+" : ""}
-                  {row.diff}
+                <td style={{ color: row.diff !== null && row.diff < 0 ? "var(--red)" : "var(--green)" }}>
+                  {row.diff === null ? "—" : `${row.diff > 0 ? "+" : ""}${row.diff}`}
                 </td>
-                <td>{row.minsLabel}</td>
-                <td>{row.intensity}</td>
-                <td>
-                  <span className={`badge ${row.acwrBadge}`}>{row.acwr}</span>
-                </td>
+                <td>{row.total !== null ? row.minsLabel : "—"}</td>
+                <td>{row.intensity ?? "—"}</td>
+                <td>{row.acwr !== null ? <span className={`badge ${row.acwrBadge}`}>{row.acwr}</span> : "—"}</td>
               </tr>
             ))}
           </tbody>
@@ -185,7 +176,9 @@ export default async function DashboardPage({
         <h2 className="section-title">
           S&Cコメント{" "}
           {!data.commentEditable && (
-            <span style={{ fontSize: 11, color: "var(--muted)", fontWeight: 400 }}>※内容はダミー</span>
+            <span style={{ fontSize: 11, color: "var(--muted)", fontWeight: 400 }}>
+              Supabase未接続のため表示・編集できません
+            </span>
           )}
         </h2>
         <DailyCommentEditor

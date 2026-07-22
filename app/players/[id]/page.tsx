@@ -85,53 +85,53 @@ export default async function PlayerDetailPage({
 
       <div className="card" style={{ marginBottom: 14 }}>
         <h2 className="section-title">
-          InBody{inbodyIsReal && measuredDate ? `(最新測定 ${measuredDate})` : "(最新測定)"}{" "}
-          {inbodyIsReal ? (
-            <span className="badge b-ok">実データ</span>
-          ) : (
-            <span style={{ fontSize: 11, color: "var(--muted)", fontWeight: 400 }}>
-              ※値はダミー。InBody取込み(管理者)で実測値に切替
-            </span>
-          )}
+          InBody{inbodyIsReal && measuredDate ? `(最新測定 ${measuredDate})` : ""}{" "}
+          {inbodyIsReal && <span className="badge b-ok">実データ</span>}
         </h2>
-        <div className="grid kpi">
-          <div className="card">
-            <div className="lbl">体重</div>
-            <div className="num">
-              {ib.weightKg}
-              <span style={{ fontSize: 13 }}>kg</span>
+        {ib && ibTrend ? (
+          <>
+            <div className="grid kpi">
+              <div className="card">
+                <div className="lbl">体重</div>
+                <div className="num">
+                  {ib.weightKg}
+                  <span style={{ fontSize: 13 }}>kg</span>
+                </div>
+              </div>
+              <div className="card">
+                <div className="lbl">骨格筋量</div>
+                <div className="num">
+                  {ib.muscleMassKg}
+                  <span style={{ fontSize: 13 }}>kg</span>
+                </div>
+              </div>
+              <div className="card">
+                <div className="lbl">体脂肪量</div>
+                <div className="num">
+                  {ib.fatMassKg}
+                  <span style={{ fontSize: 13 }}>kg</span>
+                </div>
+              </div>
+              <div className="card">
+                <div className="lbl">体脂肪率</div>
+                <div className="num">
+                  {ib.fatPct}
+                  <span style={{ fontSize: 13 }}>%</span>
+                </div>
+              </div>
             </div>
-          </div>
-          <div className="card">
-            <div className="lbl">骨格筋量</div>
-            <div className="num">
-              {ib.muscleMassKg}
-              <span style={{ fontSize: 13 }}>kg</span>
+            <div className="chart-box mt" style={{ height: 180 }}>
+              <InbodyChart
+                labels={ibTrend.labels}
+                weightKg={ibTrend.weightKg}
+                muscleMassKg={ibTrend.muscleMassKg}
+                fatPct={ibTrend.fatPct}
+              />
             </div>
-          </div>
-          <div className="card">
-            <div className="lbl">体脂肪量</div>
-            <div className="num">
-              {ib.fatMassKg}
-              <span style={{ fontSize: 13 }}>kg</span>
-            </div>
-          </div>
-          <div className="card">
-            <div className="lbl">体脂肪率</div>
-            <div className="num">
-              {ib.fatPct}
-              <span style={{ fontSize: 13 }}>%</span>
-            </div>
-          </div>
-        </div>
-        <div className="chart-box mt" style={{ height: 180 }}>
-          <InbodyChart
-            labels={ibTrend.labels}
-            weightKg={ibTrend.weightKg}
-            muscleMassKg={ibTrend.muscleMassKg}
-            fatPct={ibTrend.fatPct}
-          />
-        </div>
+          </>
+        ) : (
+          <p className="note">まだInBodyの測定データがありません。</p>
+        )}
       </div>
 
       <div className="grid two">

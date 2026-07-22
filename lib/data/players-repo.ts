@@ -1,10 +1,9 @@
-// §4.1 players 選手マスタ。Supabase接続時は実データ、未接続・エラー時はseedにフォールバック(§11)。
+// §4.1 players 選手マスタ。Supabase未接続・エラー時は空配列を返す(ダミーの選手は出さない)。
 // player.status(ok/warn/part/out)はplayersテーブルには持たせず、injuries(復帰日未確定の怪我)から
 // 都度導出する(手動フラグと怪我記録の二重管理を避けるため)。
 
 import { createAdminClient, withTimeout } from "../supabase/admin";
 import { getDefaultTeamId } from "../supabase/team";
-import { PLAYERS as SEED_PLAYERS } from "./seed";
 import type { InjuryStatus, Player, PlayerStatus, PositionGroup } from "../types";
 
 const AVATAR_COLORS = ["#1d9e75", "#3379c8", "#b0770f", "#7c5cd6", "#d9485a", "#0e9c8f"];
@@ -80,11 +79,9 @@ export async function getTeamPlayers({ includeInactive = false } = {}): Promise<
     }
 
     const rows = (playersRes.data ?? []) as PlayerDb[];
-    if (rows.length === 0) return { players: SEED_PLAYERS, source: "seed" };
-
     return { players: rows.map((r, i) => toPlayer(r, i, activeStatuses)), source: "supabase" };
   } catch {
-    return { players: SEED_PLAYERS, source: "seed" };
+    return { players: [], source: "seed" };
   }
 }
 

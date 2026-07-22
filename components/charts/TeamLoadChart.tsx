@@ -9,8 +9,8 @@ export default function TeamLoadChart({
   srpe,
 }: {
   labels: string[];
-  aal: number[];
-  srpe: number[];
+  aal: (number | null)[];
+  srpe: (number | null)[];
 }) {
   return (
     <Chart

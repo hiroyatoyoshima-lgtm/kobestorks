@@ -1,5 +1,5 @@
-import { INJURIES, STATUS_LABEL } from "./seed";
-import { last14Days, labelMD, seededSeries } from "./rng";
+import { STATUS_LABEL } from "./seed";
+import { last14Days, labelMD } from "./rng";
 import type { Injury, InjuryStatus, Player } from "../types";
 import { effectiveTotalAal } from "../calc";
 import { compositeScore, getPlayerWellnessRange } from "./wellness-repo";
@@ -8,7 +8,6 @@ import { getDefaultTeamId } from "../supabase/team";
 import { getInbodyHistory } from "./inbody-repo";
 
 // 復帰日(return_date)未確定=現在進行形の怪我のみを対象にする。過去に治った怪我は表示しない。
-// Supabase未接続・エラー時はダミー3件のうち該当選手のものにフォールバック。
 export async function getInjuryForPlayer(playerId: string): Promise<Injury | undefined> {
   try {
     const teamId = await getDefaultTeamId();
@@ -43,7 +42,7 @@ export async function getInjuryForPlayer(playerId: string): Promise<Injury | und
       updatedBy: data.updated_by,
     };
   } catch {
-    return INJURIES.find((i) => i.playerId === playerId);
+    return undefined;
   }
 }
 
@@ -61,29 +60,10 @@ export interface InbodyTrendData {
   fatPct: number[];
 }
 
-function dummyInbodyLatest(player: Player): InbodyLatest {
-  const w = +(85 + ((player.no * 37) % 25)).toFixed(1);
-  const fatPct = +(8 + ((player.no * 11) % 8)).toFixed(1);
-  const fat = +((w * fatPct) / 100).toFixed(1);
-  const smm = +((w - fat) * 0.56).toFixed(1);
-  return { weightKg: w, muscleMassKg: smm, fatMassKg: fat, fatPct };
-}
-
-const IB_MONTHS = ["2月", "3月", "4月", "5月", "6月", "7月"];
-
-function dummyInbodyTrend(b: InbodyLatest): InbodyTrendData {
-  return {
-    labels: IB_MONTHS,
-    weightKg: IB_MONTHS.map((_, i) => +(b.weightKg - 1.5 + i * 0.3).toFixed(1)),
-    muscleMassKg: IB_MONTHS.map((_, i) => +(b.muscleMassKg - 1 + i * 0.2).toFixed(1)),
-    fatPct: IB_MONTHS.map((_, i) => +(b.fatPct + 1 - i * 0.15).toFixed(1)),
-  };
-}
-
-// InBody取込み(CSV, §5.7と同じ思想)の実データがあればそれを、無ければダミーにフォールバック。
+// InBody取込みの実測値があればそれを返す。無ければlatest/trendともnull(ダミー値は生成しない)。
 export async function getInbodyData(
   player: Player
-): Promise<{ latest: InbodyLatest; trend: InbodyTrendData; isReal: boolean; measuredDate?: string }> {
+): Promise<{ latest: InbodyLatest | null; trend: InbodyTrendData | null; isReal: boolean; measuredDate?: string }> {
   const history = await getInbodyHistory(player.playerId);
 
   if (history && history.length > 0) {
@@ -106,15 +86,14 @@ export async function getInbodyData(
     };
   }
 
-  const latest = dummyInbodyLatest(player);
-  return { latest, trend: dummyInbodyTrend(latest), isReal: false };
+  return { latest: null, trend: null, isReal: false };
 }
 
 export async function aalTrend(player: Player, anchorDate: string) {
   const days = last14Days(anchorDate);
   return {
     labels: days.map(labelMD),
-    // Kinexon取込み済みの日は実測値、未取込みの日はダミーで補完(§11の差替え可能設計)
+    // Kinexon取込み済みの日だけ実測値。未取込みの日はnull(グラフ上は欠測として表示)
     values: await Promise.all(days.map((d) => effectiveTotalAal(player, d))),
   };
 }
@@ -122,14 +101,13 @@ export async function aalTrend(player: Player, anchorDate: string) {
 export async function wellnessTrend(player: Player, anchorDate: string) {
   const days = last14Days(anchorDate);
   const real = await getPlayerWellnessRange(player.playerId, days[0], days[days.length - 1]);
-  const dummy = seededSeries(player.no * 3, 34, 18, days).map((v) => +Math.min(5, Math.max(1, v / 10)).toFixed(1));
 
   return {
     labels: days.map(labelMD),
-    // 実際にアンケートに回答があった日は実測値(総合スコア=4項目平均)、無い日はダミーで補完
-    values: days.map((d, i) => {
+    // 回答があった日だけ実測値(総合スコア=4項目平均)。無い日はnull
+    values: days.map((d) => {
       const row = real?.get(d);
-      return row ? compositeScore(row) : dummy[i];
+      return row ? compositeScore(row) : null;
     }),
   };
 }
@@ -142,14 +120,7 @@ export interface HistoryRow {
   by: string;
 }
 
-const SEED_HISTORY: HistoryRow[] = [
-  { date: "7/15", type: "S&C", badge: "b-ok", content: "下肢筋力測定 実施。前回比+4%", by: "寺地" },
-  { date: "7/12", type: "ケア", badge: "b-soon", content: "試合後リカバリー(交代浴+ストレッチ)", by: "ATトレーナー" },
-  { date: "7/10", type: "メモ", badge: "b-part", content: "本人より疲労感の訴えあり。負荷10%減で対応", by: "寺地" },
-];
-
 // care_log(ケア実施記録)+ wellness(コメント・痛み申告)の実データを日付降順でまとめる。
-// Supabase未接続・エラー時はダミー3件にフォールバック。
 export async function careHistory(player: Player, limit = 8): Promise<HistoryRow[]> {
   try {
     const teamId = await getDefaultTeamId();
@@ -201,14 +172,12 @@ export async function careHistory(player: Player, limit = 8): Promise<HistoryRow
         by: "本人",
       }));
 
-    const merged = [...careRows, ...memoRows]
+    return [...careRows, ...memoRows]
       .sort((a, b) => (a.rawDate < b.rawDate ? 1 : -1))
       .slice(0, limit)
       .map(({ rawDate: _rawDate, ...row }) => row);
-
-    return merged;
   } catch {
-    return SEED_HISTORY;
+    return [];
   }
 }
 

@@ -9,8 +9,8 @@ export default function WellnessChart({
   fatigue,
 }: {
   labels: string[];
-  distance: number[];
-  fatigue: number[];
+  distance: (number | null)[];
+  fatigue: (number | null)[];
 }) {
   return (
     <Chart

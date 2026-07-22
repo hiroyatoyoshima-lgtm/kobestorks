@@ -1,6 +1,5 @@
 import { createAdminClient, withTimeout } from "../supabase/admin";
 import { getDefaultTeamId } from "../supabase/team";
-import { INJURIES as SEED_INJURIES, CARE_LOGS as SEED_CARE_LOGS } from "./seed";
 import type { CareLog, Injury, InjuryStatus } from "../types";
 
 export interface InjuriesPageData {
@@ -9,7 +8,7 @@ export interface InjuriesPageData {
   source: "supabase" | "seed";
 }
 
-// Supabase接続がまだ・未設定・エラー時はダミーデータにフォールバックし、アプリを壊さない(§11の差替え可能設計)。
+// Supabase接続がまだ・未設定・エラー時は空データを返す(ダミーは出さない)。
 export async function getInjuriesPageData(dateIso: string): Promise<InjuriesPageData> {
   try {
     const teamId = await getDefaultTeamId();
@@ -52,7 +51,7 @@ export async function getInjuriesPageData(dateIso: string): Promise<InjuriesPage
 
     return { injuries, careLogs, source: "supabase" };
   } catch {
-    return { injuries: SEED_INJURIES, careLogs: SEED_CARE_LOGS, source: "seed" };
+    return { injuries: [], careLogs: [], source: "seed" };
   }
 }
 

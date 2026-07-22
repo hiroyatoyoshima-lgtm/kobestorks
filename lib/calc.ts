@@ -1,10 +1,8 @@
 // §6 アラートロジック・§7 計算仕様。
-// 実DB接続後は total_aal 等の元データは sessions/wellness テーブルの実測値に置き換わるが、
-// 計算式(target_aal・deficit・ACWR・アラート判定)はそのまま流用できる形にしてある。
+// ダミー値の生成はすべて廃止し、実データが無い場合はnull/未計算のまま返す(表示側で「データなし」を出す)。
 
-import type { AlertItem, DailyLoad, DayType, Player } from "./types";
+import type { AlertItem, DayType, Player } from "./types";
 import { DEFAULT_SETTINGS, TeamSettings, type DailyIntensityBand } from "./settings";
-import { dateSeed } from "./data/rng";
 import { getDailyLoad as getStoredDailyLoad, getRecentTotalAal } from "./data/kinexon-repo";
 
 export function targetAal(player: Player, dt: DayType, settings: TeamSettings = DEFAULT_SETTINGS): number {
@@ -18,46 +16,7 @@ export function intensityBand(totalAal: number, settings: TeamSettings = DEFAULT
   return band ? band.label : "VERY-HIGH";
 }
 
-// ACWR = 直近7日AAL合計 ÷ 直近28日AALの7日平均。
-// ダミー実装では日付シードから決定論的な疑似値を作る(本番は daily_load の実測値を集計する)。
-export function pseudoAcwr(player: Player, date: string): number {
-  const s = player.no * 7 + dateSeed(date);
-  return +(0.85 + ((s * 17) % 55) / 100).toFixed(2);
-}
-
-export function pseudoTotalAal(player: Player, date: string): number {
-  const s = player.no * 7 + dateSeed(date);
-  return Math.round(300 + ((s * 73) % 280));
-}
-
-export function computeDailyLoad(
-  player: Player,
-  date: string,
-  dt: DayType,
-  settings: TeamSettings = DEFAULT_SETTINGS
-): DailyLoad {
-  const total = pseudoTotalAal(player, date);
-  const target = targetAal(player, dt, settings);
-  const deficit = total - target;
-  const deficitMin = deficit < 0 ? +(Math.abs(deficit) / 20).toFixed(1) : 0;
-  const acwr = pseudoAcwr(player, date);
-  const s = player.no * 7 + dateSeed(date);
-  const srpe = +(1 + ((s * 11) % 40) / 10).toFixed(1);
-  return {
-    playerId: player.playerId,
-    date,
-    totalAal: total,
-    targetAal: target,
-    deficitLoad: deficit,
-    deficitMin,
-    intensityBand: intensityBand(total, settings),
-    acwr,
-    srpe,
-  };
-}
-
-// Kinexon実データ(Supabase daily_load)から ACWR = 直近7日合計 ÷ 直近28日の7日平均、を計算する。
-// 実データが十分に蓄積していない期間は null を返し、呼び出し側はダミー値にフォールバックする。
+// ACWR = 直近7日AAL合計 ÷ 直近28日AALの7日平均。実データが十分に蓄積していない期間はnullを返す。
 export async function acwrFromStore(playerId: string, date: string): Promise<number | null> {
   const [recent7, recent28] = await Promise.all([
     getRecentTotalAal(playerId, date, 7),
@@ -71,37 +30,62 @@ export async function acwrFromStore(playerId: string, date: string): Promise<num
   return +(acute7 / chronicAvg7).toFixed(2);
 }
 
-// その日の実測値(Kinexon取込み)があればそれを、無ければダミー値を返す(§11のダミー差替え設計)。
+export interface EffectiveDailyLoad {
+  playerId: string;
+  date: string;
+  isReal: boolean;
+  totalAal: number | null;
+  targetAal: number;
+  deficitLoad: number | null;
+  deficitMin: number | null;
+  intensityBand: DailyIntensityBand | null;
+  acwr: number | null;
+  // Kinexon・wellnessのどちらにもRPEの実データ源が無いため常にnull(専用入力を作るまで計算不可)
+  srpe: number | null;
+}
+
+// その日のKinexon実測値(daily_load)があればそれを使う。無ければtotalAal等はnull(§13: ダミー値は出さない)。
+// target_aalだけは選手ポジション・当日係数という実在の設定値から常に計算できるため、実データの有無に関わらず返す。
 export async function getEffectiveDailyLoad(
   player: Player,
   date: string,
   dt: DayType,
   settings: TeamSettings = DEFAULT_SETTINGS
-): Promise<DailyLoad & { isReal: boolean }> {
+): Promise<EffectiveDailyLoad> {
+  const target = targetAal(player, dt, settings);
   const stored = await getStoredDailyLoad(player.playerId, date);
   if (!stored) {
-    return { ...computeDailyLoad(player, date, dt, settings), isReal: false };
+    return {
+      playerId: player.playerId,
+      date,
+      isReal: false,
+      totalAal: null,
+      targetAal: target,
+      deficitLoad: null,
+      deficitMin: null,
+      intensityBand: null,
+      acwr: null,
+      srpe: null,
+    };
   }
-  const acwr = (await acwrFromStore(player.playerId, date)) ?? pseudoAcwr(player, date);
-  const s = player.no * 7 + dateSeed(date);
-  const srpe = +(1 + ((s * 11) % 40) / 10).toFixed(1); // Kinexonにはsrpe元データ(RPE)が無いため引き続きダミー
+  const acwr = await acwrFromStore(player.playerId, date);
   return {
     playerId: player.playerId,
     date,
+    isReal: true,
     totalAal: stored.totalAal,
     targetAal: stored.targetAal,
     deficitLoad: stored.deficitLoad,
     deficitMin: stored.deficitMin,
     intensityBand: stored.intensityBand as DailyIntensityBand,
     acwr,
-    srpe,
-    isReal: true,
+    srpe: null,
   };
 }
 
-export async function effectiveTotalAal(player: Player, date: string): Promise<number> {
+export async function effectiveTotalAal(player: Player, date: string): Promise<number | null> {
   const stored = await getStoredDailyLoad(player.playerId, date);
-  return stored ? stored.totalAal : pseudoTotalAal(player, date);
+  return stored ? stored.totalAal : null;
 }
 
 export function acwrBadgeClass(acwr: number, settings: TeamSettings = DEFAULT_SETTINGS): string {
@@ -140,6 +124,7 @@ export async function loadSpikeAlert(
 }
 
 // 選手・日付ごとのアラート判定(§6)。ACWR・負荷急増の2種(ウェルネスは実データが別経路のためdashboard.tsで判定)。
+// ACWRが計算不能(実データ不足)な選手はダミー値を作らずスキップする。
 export async function computeAlerts(
   players: Player[],
   date: string,
@@ -147,25 +132,27 @@ export async function computeAlerts(
 ): Promise<AlertItem[]> {
   const alerts: AlertItem[] = [];
   for (const p of players) {
-    const acwr = (await acwrFromStore(p.playerId, date)) ?? pseudoAcwr(p, date);
-    if (acwr > settings.acwrAlert) {
-      alerts.push({
-        playerId: p.playerId,
-        date,
-        type: "ACWR",
-        severity: "alert",
-        value: acwr.toFixed(2),
-        message: `急性:慢性負荷比 ${acwr.toFixed(2)}(基準${settings.acwrAlert}超過)。負荷調整を推奨`,
-      });
-    } else if (acwr > settings.acwrWarn) {
-      alerts.push({
-        playerId: p.playerId,
-        date,
-        type: "ACWR",
-        severity: "warn",
-        value: acwr.toFixed(2),
-        message: `急性:慢性負荷比 ${acwr.toFixed(2)}(注意閾値${settings.acwrWarn}超過)。モニタリング推奨`,
-      });
+    const acwr = await acwrFromStore(p.playerId, date);
+    if (acwr !== null) {
+      if (acwr > settings.acwrAlert) {
+        alerts.push({
+          playerId: p.playerId,
+          date,
+          type: "ACWR",
+          severity: "alert",
+          value: acwr.toFixed(2),
+          message: `急性:慢性負荷比 ${acwr.toFixed(2)}(基準${settings.acwrAlert}超過)。負荷調整を推奨`,
+        });
+      } else if (acwr > settings.acwrWarn) {
+        alerts.push({
+          playerId: p.playerId,
+          date,
+          type: "ACWR",
+          severity: "warn",
+          value: acwr.toFixed(2),
+          message: `急性:慢性負荷比 ${acwr.toFixed(2)}(注意閾値${settings.acwrWarn}超過)。モニタリング推奨`,
+        });
+      }
     }
 
     const spike = await loadSpikeAlert(p, date, settings);

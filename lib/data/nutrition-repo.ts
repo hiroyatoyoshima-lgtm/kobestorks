@@ -1,6 +1,5 @@
 import { createAdminClient, withTimeout } from "../supabase/admin";
 import { getDefaultTeamId } from "../supabase/team";
-import { NUTRITION_TODAY as SEED_NUTRITION } from "./seed";
 import type { NutritionReport, NutritionTiming } from "../types";
 
 export interface NutritionPageData {
@@ -41,13 +40,8 @@ export async function getNutritionPageData(dateIso: string): Promise<NutritionPa
       });
     }
 
-    // 今日まだ何も入力されていない場合はサンプルを表示(Supabase自体には接続できている)
-    if (latestByTiming.size === 0) {
-      return { reports: SEED_NUTRITION, source: "seed" };
-    }
-
     return { reports: [...latestByTiming.values()], source: "supabase" };
   } catch {
-    return { reports: SEED_NUTRITION, source: "seed" };
+    return { reports: [], source: "seed" };
   }
 }

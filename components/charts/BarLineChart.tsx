@@ -11,7 +11,7 @@ export default function BarLineChart({
 }: {
   labels: string[];
   label: string;
-  data: number[];
+  data: (number | null)[];
   color: string;
 }) {
   return (

@@ -13,7 +13,7 @@ export default function LineTrendChart({
 }: {
   labels: string[];
   label: string;
-  data: number[];
+  data: (number | null)[];
   color: string;
   min?: number;
   max?: number;

@@ -32,9 +32,7 @@ export default function DateNav({ date, dayType }: { date: string; dayType: stri
       <input type="date" value={date} onChange={(e) => e.target.value && setDate(e.target.value)} />
       <button onClick={() => shift(1)}>翌日 ▶</button>
       <span className={`badge ${DAY_TYPE_BADGE[dayType] ?? "b-soon"}`}>{dayType}</span>
-      <span style={{ fontSize: 11, color: "var(--muted)" }}>
-        日付を選ぶとその日のレポートに切替(現在はダミーデータ)
-      </span>
+      <span style={{ fontSize: 11, color: "var(--muted)" }}>日付を選ぶとその日のレポートに切替</span>
     </div>
   );
 }

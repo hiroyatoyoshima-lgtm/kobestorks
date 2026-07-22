@@ -128,40 +128,48 @@ export async function getDailyLoad(playerId: string, date: string): Promise<Stor
   }
 }
 
-// 直近日付範囲でチーム平均のDistanceを日別に集計する(ダッシュボードの疲労度×Distanceグラフ用)。
-// その日にtotal_distance_mを持つ選手だけで平均を取る(§7)。
-export async function getTeamDistanceRange(
+function averageByDate(rows: { date: string; value: number | null }[]): Map<string, number> {
+  const byDate = new Map<string, number[]>();
+  for (const r of rows) {
+    if (r.value === null) continue;
+    const list = byDate.get(r.date) ?? [];
+    list.push(r.value);
+    byDate.set(r.date, list);
+  }
+  const avgByDate = new Map<string, number>();
+  for (const [date, values] of byDate) {
+    avgByDate.set(date, Math.round(values.reduce((s, v) => s + v, 0) / values.length));
+  }
+  return avgByDate;
+}
+
+// 直近日付範囲でチーム平均のTotal AAL・Distanceを日別に集計する(ダッシュボードの14日推移グラフ用)。
+// その日に実データを持つ選手だけで平均を取り、実データが無い日は結果に含めない(§13: ダミー値は返さない)。
+export async function getTeamLoadSeriesRange(
   startDate: string,
   endDate: string
-): Promise<Map<string, number>> {
+): Promise<{ aal: Map<string, number>; distance: Map<string, number> }> {
   try {
     const teamId = await getDefaultTeamId();
-    if (!teamId) return new Map();
+    if (!teamId) return { aal: new Map(), distance: new Map() };
     const supabase = createAdminClient();
     const { data, error } = await withTimeout(
       supabase
         .from("daily_load")
-        .select("date, total_distance_m")
+        .select("date, total_aal, total_distance_m")
         .eq("team_id", teamId)
         .gte("date", startDate)
         .lte("date", endDate)
-        .not("total_distance_m", "is", null)
     );
-    if (error) return new Map();
+    if (error) return { aal: new Map(), distance: new Map() };
 
-    const byDate = new Map<string, number[]>();
-    for (const r of (data ?? []) as { date: string; total_distance_m: number }[]) {
-      const list = byDate.get(r.date) ?? [];
-      list.push(r.total_distance_m);
-      byDate.set(r.date, list);
-    }
-    const avgByDate = new Map<string, number>();
-    for (const [date, values] of byDate) {
-      avgByDate.set(date, Math.round(values.reduce((s, v) => s + v, 0) / values.length));
-    }
-    return avgByDate;
+    const rows = (data ?? []) as { date: string; total_aal: number | null; total_distance_m: number | null }[];
+    return {
+      aal: averageByDate(rows.map((r) => ({ date: r.date, value: r.total_aal }))),
+      distance: averageByDate(rows.map((r) => ({ date: r.date, value: r.total_distance_m }))),
+    };
   } catch {
-    return new Map();
+    return { aal: new Map(), distance: new Map() };
   }
 }
 
