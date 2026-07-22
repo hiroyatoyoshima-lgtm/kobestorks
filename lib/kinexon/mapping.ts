@@ -33,14 +33,16 @@ export const FIELD_LABELS: Record<MappingField, string> = {
 const GUESS_PATTERNS: Record<MappingField, RegExp[]> = {
   date: [/^date$/i, /日付/, /セッション日/],
   playerNameKinexon: [/name/i, /player/i, /選手/, /氏名/],
-  drillName: [/drill/i, /activity/i, /ドリル/],
+  drillName: [/drill/i, /ドリル/],
   aal: [/^aal$/i, /aal/i, /player.?load/i, /load/i],
   distanceM: [/distance/i, /走行距離/],
   sessionType: [/session.?type/i, /type/i, /区分/],
   startTime: [/start/i, /time/i, /開始/],
-  accelCount: [/accel/i],
-  decelCount: [/decel/i],
-  jumpCount: [/jump/i],
+  // "Acceleration Load"等の負荷指標と誤マッチしないよう、count/回数を伴う列名のみを対象にする
+  accelCount: [/accel.*count/i, /count.*accel/i],
+  decelCount: [/decel.*count/i, /count.*decel/i],
+  // "Jump Height"等と誤マッチしないよう、"Jumps"のような回数そのものの列名を優先する
+  jumpCount: [/^jumps?$/i, /jump.*count/i],
 };
 
 export type ColumnMapping = Partial<Record<MappingField, string>>;
