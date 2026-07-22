@@ -6,7 +6,8 @@ import type { ParsedCsv } from "../kinexon/csv";
 import { normalizeDate, normalizeName } from "../kinexon/mapping";
 import type { ColumnMapping } from "./mapping";
 import type { Player } from "../types";
-import { createAdminClient, withTimeout } from "../supabase/admin";
+import { withTimeout } from "../supabase/admin";
+import { createClient as createServerSupabase } from "../supabase/server";
 import { getDefaultTeamId } from "../supabase/team";
 
 export interface RowResult {
@@ -110,7 +111,8 @@ export async function commitImport(results: RowResult[]): Promise<ImportSummary>
     const teamId = await getDefaultTeamId();
     if (!teamId) throw new Error("チーム情報が見つかりません(Supabaseに接続できない可能性があります)。");
 
-    const supabase = createAdminClient();
+    // 個人の身体データのため、ログイン中ユーザーのセッションでアクセスしRLSにも判定させる。
+    const supabase = await createServerSupabase();
     const { error } = await withTimeout(
       supabase.from("inbody").upsert(
         okRows.map((r) => ({
