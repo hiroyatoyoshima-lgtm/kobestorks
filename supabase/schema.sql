@@ -427,3 +427,27 @@ create policy sync_logs_select on sync_logs
 
 create policy teams_select on teams
   for select using (team_id = auth_team_id());
+
+-- =========================================================
+-- アクセスログ(§9): 要配慮情報への閲覧・編集の監査証跡
+-- =========================================================
+create table access_logs (
+  id            uuid primary key default gen_random_uuid(),
+  team_id       uuid not null references teams (team_id) on delete cascade,
+  actor_user_id uuid,
+  actor_email   text,
+  actor_role    text,
+  action        text not null check (action in ('view', 'create', 'update')),
+  resource      text not null,
+  player_id     text,
+  created_at    timestamptz not null default now()
+);
+
+alter table access_logs enable row level security;
+
+-- 閲覧はadminのみ。書き込みはservice_role(アプリのサーバー側)のみが行い、
+-- 通常ユーザーからの改ざん・削除を防ぐためinsert/update/delete用のpolicyは意図的に作らない。
+create policy access_logs_select on access_logs
+  for select using (team_id = auth_team_id() and auth_role() = 'admin');
+
+create index access_logs_team_created_idx on access_logs (team_id, created_at desc);

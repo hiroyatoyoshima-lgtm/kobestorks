@@ -9,6 +9,7 @@ import CareForm from "@/components/CareForm";
 import type { CalendarEntry } from "@/components/PlayerCareCalendar";
 import { getCurrentUser } from "@/lib/auth/session";
 import { EDIT_INJURIES, VIEW_INJURIES, hasRole, isPlayerRole } from "@/lib/auth/permissions";
+import { logAccess } from "@/lib/audit/log";
 
 // Supabase/ローカルstoreの最新データを毎回取得する(ビルド時にスナップショット固定させない)
 export const dynamic = "force-dynamic";
@@ -26,6 +27,7 @@ export default async function InjuriesPage() {
     );
   }
   const canEdit = hasRole(user, EDIT_INJURIES);
+  await logAccess("view", "injuries_list");
 
   const { players } = await getTeamPlayers();
   const playerById = new Map(players.map((p) => [p.playerId, p]));

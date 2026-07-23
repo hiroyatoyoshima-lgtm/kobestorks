@@ -12,6 +12,7 @@ import {
 } from "@/lib/data/player";
 import { getTeamPlayer } from "@/lib/data/players-repo";
 import { todayISO } from "@/lib/data/dashboard";
+import { logAccess } from "@/lib/audit/log";
 import BarLineChart from "@/components/charts/BarLineChart";
 import LineTrendChart from "@/components/charts/LineTrendChart";
 import InbodyChart from "@/components/charts/InbodyChart";
@@ -45,6 +46,8 @@ export default async function PlayerDetailPage({
       </div>
     );
   }
+
+  await logAccess("view", "player_profile", player.playerId);
 
   const injury = await getInjuryForPlayer(player.playerId);
   const { latest: ib, trend: ibTrend, isReal: inbodyIsReal, measuredDate } = await getInbodyData(player);

@@ -2,6 +2,7 @@ import { withTimeout } from "@/lib/supabase/admin";
 import { createClient as createServerSupabase } from "@/lib/supabase/server";
 import { getCurrentTeamId } from "@/lib/supabase/team";
 import { getCurrentUser } from "@/lib/auth/session";
+import { logAccess } from "@/lib/audit/log";
 
 interface WellnessBody {
   playerId: string;
@@ -68,6 +69,7 @@ export async function POST(request: Request) {
     );
 
     if (error) return Response.json({ ok: false, error: error.message }, { status: 500 });
+    await logAccess("create", "wellness", playerId);
     return Response.json({ ok: true });
   } catch (e) {
     return Response.json({ ok: false, error: e instanceof Error ? e.message : "接続に失敗しました" }, { status: 503 });
