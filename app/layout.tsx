@@ -3,7 +3,10 @@ import "./globals.css";
 import AppNav from "@/components/AppNav";
 import UserMenu from "@/components/UserMenu";
 import LogoutButton from "@/components/LogoutButton";
+import TeamSwitcher from "@/components/TeamSwitcher";
 import { getCurrentUser } from "@/lib/auth/session";
+import { getCurrentTeamId } from "@/lib/supabase/team";
+import { listAllTeams } from "@/lib/data/teams-repo";
 
 export const metadata: Metadata = {
   title: "Athrens",
@@ -17,6 +20,9 @@ export default async function RootLayout({
 }>) {
   const user = await getCurrentUser();
   const unregistered = !!user && !user.role && !user.isSuperAdmin;
+  const [teams, currentTeamId] = user?.isSuperAdmin
+    ? await Promise.all([listAllTeams(), getCurrentTeamId()])
+    : [[], null];
 
   return (
     <html lang="ja">
@@ -56,7 +62,12 @@ export default async function RootLayout({
                   <h1>Athrens</h1>
                   <div className="sub">神戸ストークス パフォーマンスチーム データ管理</div>
                 </div>
-                {user && <UserMenu email={user.email} role={user.role} />}
+                <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10 }}>
+                  {user?.isSuperAdmin && teams.length > 0 && (
+                    <TeamSwitcher teams={teams} currentTeamId={currentTeamId} />
+                  )}
+                  {user && <UserMenu email={user.email} role={user.role} />}
+                </div>
               </header>
               <main>{children}</main>
             </div>

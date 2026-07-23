@@ -5,13 +5,13 @@ import { effectiveTotalAal } from "../calc";
 import { compositeScore, getPlayerWellnessRange } from "./wellness-repo";
 import { withTimeout } from "../supabase/admin";
 import { createClient as createServerSupabase } from "../supabase/server";
-import { getDefaultTeamId } from "../supabase/team";
+import { getCurrentTeamId } from "../supabase/team";
 import { getInbodyHistory } from "./inbody-repo";
 
 // 復帰日(return_date)未確定=現在進行形の怪我のみを対象にする。過去に治った怪我は表示しない。
 export async function getInjuryForPlayer(playerId: string): Promise<Injury | undefined> {
   try {
-    const teamId = await getDefaultTeamId();
+    const teamId = await getCurrentTeamId();
     if (!teamId) throw new Error("no team");
     // 要配慮情報のため、ログイン中ユーザーのセッションでアクセスしてRLSにも判定させる。
     const supabase = await createServerSupabase();
@@ -125,7 +125,7 @@ export interface HistoryRow {
 // care_log(ケア実施記録)+ wellness(コメント・痛み申告)の実データを日付降順でまとめる。
 export async function careHistory(player: Player, limit = 8): Promise<HistoryRow[]> {
   try {
-    const teamId = await getDefaultTeamId();
+    const teamId = await getCurrentTeamId();
     if (!teamId) throw new Error("no team");
     const supabase = await createServerSupabase();
 

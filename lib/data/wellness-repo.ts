@@ -1,6 +1,6 @@
 import { withTimeout } from "../supabase/admin";
 import { createClient as createServerSupabase } from "../supabase/server";
-import { getDefaultTeamId } from "../supabase/team";
+import { getCurrentTeamId } from "../supabase/team";
 
 export interface WellnessRow {
   playerId: string;
@@ -54,7 +54,7 @@ export function compositeScore(w: WellnessRow): number {
 // 指定日、チーム全員分(選手ごとに最大1件)
 export async function getTeamWellnessForDate(date: string): Promise<Map<string, WellnessRow> | null> {
   try {
-    const teamId = await getDefaultTeamId();
+    const teamId = await getCurrentTeamId();
     if (!teamId) return null;
     const supabase = await createServerSupabase();
     const { data, error } = await withTimeout(
@@ -75,7 +75,7 @@ export async function getTeamWellnessRange(
   endDate: string
 ): Promise<Map<string, WellnessRow[]> | null> {
   try {
-    const teamId = await getDefaultTeamId();
+    const teamId = await getCurrentTeamId();
     if (!teamId) return null;
     const supabase = await createServerSupabase();
     const { data, error } = await withTimeout(
@@ -107,7 +107,7 @@ export async function getPlayerWellnessRange(
   endDate: string
 ): Promise<Map<string, WellnessRow> | null> {
   try {
-    const teamId = await getDefaultTeamId();
+    const teamId = await getCurrentTeamId();
     if (!teamId) return null;
     const supabase = await createServerSupabase();
     const { data, error } = await withTimeout(

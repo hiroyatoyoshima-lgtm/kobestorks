@@ -1,5 +1,5 @@
 import { createAdminClient, withTimeout } from "../supabase/admin";
-import { getDefaultTeamId } from "../supabase/team";
+import { getCurrentTeamId } from "../supabase/team";
 import type { Role } from "../auth/session";
 
 export interface TeamUser {
@@ -12,7 +12,7 @@ export interface TeamUser {
 }
 
 export async function listUsers(): Promise<TeamUser[]> {
-  const teamId = await getDefaultTeamId();
+  const teamId = await getCurrentTeamId();
   if (!teamId) return [];
   const supabase = createAdminClient();
   const { data, error } = await withTimeout(
@@ -37,7 +37,7 @@ export async function createUser(
   playerId: string | null,
   isTeamManager: boolean
 ): Promise<void> {
-  const teamId = await getDefaultTeamId();
+  const teamId = await getCurrentTeamId();
   if (!teamId) throw new Error("チーム情報が見つかりません。");
 
   const supabase = createAdminClient();

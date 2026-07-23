@@ -1,5 +1,5 @@
 import { createAdminClient, withTimeout } from "../supabase/admin";
-import { getDefaultTeamId } from "../supabase/team";
+import { getCurrentTeamId } from "../supabase/team";
 import type { NutritionReport, NutritionTiming } from "../types";
 
 export interface NutritionPageData {
@@ -10,7 +10,7 @@ export interface NutritionPageData {
 // タイミングごとに最新の1件だけを「当日メニュー」として採用する(修正入力があれば新しい方を表示)。
 export async function getNutritionPageData(dateIso: string): Promise<NutritionPageData> {
   try {
-    const teamId = await getDefaultTeamId();
+    const teamId = await getCurrentTeamId();
     if (!teamId) throw new Error("team not found");
     const supabase = createAdminClient();
 

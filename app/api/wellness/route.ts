@@ -1,6 +1,6 @@
 import { withTimeout } from "@/lib/supabase/admin";
 import { createClient as createServerSupabase } from "@/lib/supabase/server";
-import { getDefaultTeamId } from "@/lib/supabase/team";
+import { getCurrentTeamId } from "@/lib/supabase/team";
 import { getCurrentUser } from "@/lib/auth/session";
 
 interface WellnessBody {
@@ -34,7 +34,7 @@ export async function POST(request: Request) {
       throw new Error("この操作を行う権限がありません。");
     }
 
-    const teamId = await getDefaultTeamId();
+    const teamId = await getCurrentTeamId();
     if (!teamId) {
       throw new Error("チーム情報が見つかりません(Supabaseに接続できない可能性があります)。");
     }

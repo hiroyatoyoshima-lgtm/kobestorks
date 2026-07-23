@@ -1,6 +1,6 @@
 import { withTimeout } from "../supabase/admin";
 import { createClient as createServerSupabase } from "../supabase/server";
-import { getDefaultTeamId } from "../supabase/team";
+import { getCurrentTeamId } from "../supabase/team";
 import type { CareLog, Injury, InjuryStatus } from "../types";
 
 export interface InjuriesPageData {
@@ -12,7 +12,7 @@ export interface InjuriesPageData {
 // Supabase接続がまだ・未設定・エラー時は空データを返す(ダミーは出さない)。
 export async function getInjuriesPageData(dateIso: string): Promise<InjuriesPageData> {
   try {
-    const teamId = await getDefaultTeamId();
+    const teamId = await getCurrentTeamId();
     if (!teamId) throw new Error("team not found");
     // 要配慮情報(§9)のため、管理者権限で全件取得するのではなく、ログイン中ユーザーの
     // セッションでアクセスしてRLS(§8)にも判定させる(アプリ側のロールチェックの二重の壁)。
@@ -77,7 +77,7 @@ export async function getCareCalendar(
 ): Promise<CareCalendarMap | null> {
   if (playerIds.length === 0) return new Map();
   try {
-    const teamId = await getDefaultTeamId();
+    const teamId = await getCurrentTeamId();
     if (!teamId) return null;
     const supabase = await createServerSupabase();
     const { data, error } = await withTimeout(

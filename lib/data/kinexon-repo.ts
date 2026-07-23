@@ -5,7 +5,7 @@
 // 「失敗時は空/undefinedを返す」読み取り側のパターンに揃える)。
 
 import { createAdminClient, withTimeout } from "../supabase/admin";
-import { getDefaultTeamId } from "../supabase/team";
+import { getCurrentTeamId } from "../supabase/team";
 import type { SessionDrill } from "../types";
 
 export interface StoredDailyLoad {
@@ -41,7 +41,7 @@ export async function replaceSessionsForPlayerDate(
   date: string,
   drills: SessionDrill[]
 ): Promise<void> {
-  const teamId = await getDefaultTeamId();
+  const teamId = await getCurrentTeamId();
   if (!teamId) throw new Error("チーム情報が見つかりません(Supabaseに接続できない可能性があります)。");
   const supabase = createAdminClient();
 
@@ -80,7 +80,7 @@ export async function replaceSessionsForPlayerDate(
 }
 
 export async function upsertDailyLoad(playerId: string, date: string, load: StoredDailyLoad): Promise<void> {
-  const teamId = await getDefaultTeamId();
+  const teamId = await getCurrentTeamId();
   if (!teamId) throw new Error("チーム情報が見つかりません(Supabaseに接続できない可能性があります)。");
   const supabase = createAdminClient();
   const { error } = await withTimeout(
@@ -105,7 +105,7 @@ export async function upsertDailyLoad(playerId: string, date: string, load: Stor
 
 export async function getDailyLoad(playerId: string, date: string): Promise<StoredDailyLoad | undefined> {
   try {
-    const teamId = await getDefaultTeamId();
+    const teamId = await getCurrentTeamId();
     if (!teamId) return undefined;
     const supabase = createAdminClient();
     const { data, error } = await withTimeout(
@@ -154,7 +154,7 @@ export async function getTeamLoadSeriesRange(
   endDate: string
 ): Promise<{ aal: Map<string, number>; distance: Map<string, number> }> {
   try {
-    const teamId = await getDefaultTeamId();
+    const teamId = await getCurrentTeamId();
     if (!teamId) return { aal: new Map(), distance: new Map() };
     const supabase = createAdminClient();
     const { data, error } = await withTimeout(
@@ -184,7 +184,7 @@ export async function getTeamDurationByPlayerRange(
   endDate: string
 ): Promise<Map<string, Map<string, number>>> {
   try {
-    const teamId = await getDefaultTeamId();
+    const teamId = await getCurrentTeamId();
     if (!teamId) return new Map();
     const supabase = createAdminClient();
     const { data, error } = await withTimeout(
@@ -217,7 +217,7 @@ export async function getRecentTotalAal(
   days: number
 ): Promise<{ date: string; totalAal: number }[]> {
   try {
-    const teamId = await getDefaultTeamId();
+    const teamId = await getCurrentTeamId();
     if (!teamId) return [];
     const supabase = createAdminClient();
     const fromIso = daysBeforeISO(uptoDateIso, days - 1);
@@ -241,7 +241,7 @@ export async function getRecentTotalAal(
 // Kinexon固有の情報(ファイル名・件数など)はdetail(jsonb)に格納する。
 export async function appendSyncLog(entry: SyncLogEntry): Promise<void> {
   try {
-    const teamId = await getDefaultTeamId();
+    const teamId = await getCurrentTeamId();
     if (!teamId) return;
     const supabase = createAdminClient();
     await withTimeout(
@@ -265,7 +265,7 @@ export async function appendSyncLog(entry: SyncLogEntry): Promise<void> {
 
 export async function listSyncLogs(): Promise<SyncLogEntry[]> {
   try {
-    const teamId = await getDefaultTeamId();
+    const teamId = await getCurrentTeamId();
     if (!teamId) return [];
     const supabase = createAdminClient();
     const { data, error } = await withTimeout(

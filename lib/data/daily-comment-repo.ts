@@ -1,5 +1,5 @@
 import { createAdminClient, withTimeout } from "../supabase/admin";
-import { getDefaultTeamId } from "../supabase/team";
+import { getCurrentTeamId } from "../supabase/team";
 
 export interface DailyCommentResult {
   comment: string | null;
@@ -9,7 +9,7 @@ export interface DailyCommentResult {
 // Supabase未接続・エラー時は null を返し、呼び出し側でダミーコメントにフォールバックする。
 export async function getDailyComment(date: string): Promise<DailyCommentResult | null> {
   try {
-    const teamId = await getDefaultTeamId();
+    const teamId = await getCurrentTeamId();
     if (!teamId) return null;
     const supabase = createAdminClient();
     const { data, error } = await withTimeout(

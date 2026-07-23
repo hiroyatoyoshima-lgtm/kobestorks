@@ -3,7 +3,7 @@
 // 都度導出する(手動フラグと怪我記録の二重管理を避けるため)。
 
 import { createAdminClient, withTimeout } from "../supabase/admin";
-import { getDefaultTeamId } from "../supabase/team";
+import { getCurrentTeamId } from "../supabase/team";
 import type { InjuryStatus, Player, PlayerStatus, PositionGroup } from "../types";
 
 const AVATAR_COLORS = ["#1d9e75", "#3379c8", "#b0770f", "#7c5cd6", "#d9485a", "#0e9c8f"];
@@ -55,7 +55,7 @@ export interface TeamPlayersResult {
 
 export async function getTeamPlayers({ includeInactive = false } = {}): Promise<TeamPlayersResult> {
   try {
-    const teamId = await getDefaultTeamId();
+    const teamId = await getCurrentTeamId();
     if (!teamId) throw new Error("team not found");
     const supabase = createAdminClient();
 
@@ -103,7 +103,7 @@ export interface PlayerInput {
 
 // player_idは背番号から自動採番する(例: 背番号7→P007)。既存の選手マスタと同じ命名規則。
 export async function createPlayer(input: PlayerInput): Promise<void> {
-  const teamId = await getDefaultTeamId();
+  const teamId = await getCurrentTeamId();
   if (!teamId) throw new Error("チーム情報が見つかりません(Supabaseに接続できない可能性があります)。");
   const supabase = createAdminClient();
 
@@ -132,7 +132,7 @@ export async function createPlayer(input: PlayerInput): Promise<void> {
 }
 
 export async function updatePlayer(playerId: string, patch: Partial<PlayerInput> & { active?: boolean }): Promise<void> {
-  const teamId = await getDefaultTeamId();
+  const teamId = await getCurrentTeamId();
   if (!teamId) throw new Error("チーム情報が見つかりません(Supabaseに接続できない可能性があります)。");
   const supabase = createAdminClient();
   const update: Record<string, unknown> = {};
@@ -166,7 +166,7 @@ const LINKED_DATA_TABLES: { table: string; label: string }[] = [
 // 入力ミスの取り消し用。何かデータが1件でも紐づいている選手は削除させない
 // (履歴を巻き込んで壊れる/FK制約でエラーになるのを避ける。その場合は在籍チェックを外す運用にする)。
 export async function deletePlayer(playerId: string): Promise<void> {
-  const teamId = await getDefaultTeamId();
+  const teamId = await getCurrentTeamId();
   if (!teamId) throw new Error("チーム情報が見つかりません(Supabaseに接続できない可能性があります)。");
   const supabase = createAdminClient();
 

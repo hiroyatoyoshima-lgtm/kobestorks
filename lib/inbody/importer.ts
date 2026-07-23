@@ -8,7 +8,7 @@ import type { ColumnMapping } from "./mapping";
 import type { Player } from "../types";
 import { withTimeout } from "../supabase/admin";
 import { createClient as createServerSupabase } from "../supabase/server";
-import { getDefaultTeamId } from "../supabase/team";
+import { getCurrentTeamId } from "../supabase/team";
 
 export interface RowResult {
   rowIndex: number;
@@ -108,7 +108,7 @@ export async function commitImport(results: RowResult[]): Promise<ImportSummary>
   const okRows = results.filter((r) => !r.error);
 
   if (okRows.length > 0) {
-    const teamId = await getDefaultTeamId();
+    const teamId = await getCurrentTeamId();
     if (!teamId) throw new Error("チーム情報が見つかりません(Supabaseに接続できない可能性があります)。");
 
     // 個人の身体データのため、ログイン中ユーザーのセッションでアクセスしRLSにも判定させる。

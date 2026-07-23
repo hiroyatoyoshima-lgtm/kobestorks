@@ -1,5 +1,5 @@
 import { createAdminClient, withTimeout } from "@/lib/supabase/admin";
-import { getDefaultTeamId } from "@/lib/supabase/team";
+import { getCurrentTeamId } from "@/lib/supabase/team";
 import { EDIT_DAILY_COMMENT, requireRole } from "@/lib/auth/permissions";
 
 interface Body {
@@ -14,7 +14,7 @@ export async function POST(request: Request) {
     await requireRole(EDIT_DAILY_COMMENT);
     const body = (await request.json()) as Body;
 
-    const teamId = await getDefaultTeamId();
+    const teamId = await getCurrentTeamId();
     if (!teamId) {
       return Response.json(
         { ok: false, error: "チーム情報が見つかりません(Supabaseに接続できない可能性があります)。" },

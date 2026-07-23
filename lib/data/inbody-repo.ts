@@ -1,6 +1,6 @@
 import { withTimeout } from "../supabase/admin";
 import { createClient as createServerSupabase } from "../supabase/server";
-import { getDefaultTeamId } from "../supabase/team";
+import { getCurrentTeamId } from "../supabase/team";
 
 export interface InbodyRow {
   date: string;
@@ -27,7 +27,7 @@ export async function saveInbodyEntries(date: string, entries: InbodyEntry[]): P
   );
   if (rows.length === 0) return;
 
-  const teamId = await getDefaultTeamId();
+  const teamId = await getCurrentTeamId();
   if (!teamId) throw new Error("チーム情報が見つかりません(Supabaseに接続できない可能性があります)。");
   // 個人の身体データ(体重・体脂肪率等)のため、ログイン中ユーザーのセッションでアクセスしRLSにも判定させる。
   const supabase = await createServerSupabase();
@@ -53,7 +53,7 @@ export async function saveInbodyEntries(date: string, entries: InbodyEntry[]): P
 // 直近6回分(取込み日降順)。null = Supabase未接続/エラー(呼び出し側で空扱いにする)。
 export async function getInbodyHistory(playerId: string, limit = 6): Promise<InbodyRow[] | null> {
   try {
-    const teamId = await getDefaultTeamId();
+    const teamId = await getCurrentTeamId();
     if (!teamId) return null;
     const supabase = await createServerSupabase();
     const { data, error } = await withTimeout(

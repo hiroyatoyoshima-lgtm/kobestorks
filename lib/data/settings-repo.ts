@@ -1,5 +1,5 @@
 import { createAdminClient, withTimeout } from "../supabase/admin";
-import { getDefaultTeamId } from "../supabase/team";
+import { getCurrentTeamId } from "../supabase/team";
 import { DEFAULT_SETTINGS, type TeamSettings } from "../settings";
 
 const INTENSITY_LABELS = ["VERY-LOW", "LOW", "MID", "HIGH"] as const;
@@ -43,7 +43,7 @@ export interface TeamSettingsResult {
 // 接続済みなら、まだ保存されていなくても source:"supabase"(デフォルト値を初期表示しつつ編集可)。
 export async function getTeamSettings(): Promise<TeamSettingsResult> {
   try {
-    const teamId = await getDefaultTeamId();
+    const teamId = await getCurrentTeamId();
     if (!teamId) return { settings: DEFAULT_SETTINGS, source: "seed" };
 
     const supabase = createAdminClient();
@@ -60,7 +60,7 @@ export async function getTeamSettings(): Promise<TeamSettingsResult> {
 }
 
 export async function saveTeamSettings(settings: TeamSettings): Promise<void> {
-  const teamId = await getDefaultTeamId();
+  const teamId = await getCurrentTeamId();
   if (!teamId) throw new Error("チーム情報が見つかりません(Supabaseに接続できない可能性があります)。");
 
   const supabase = createAdminClient();
