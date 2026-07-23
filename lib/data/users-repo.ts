@@ -11,22 +11,28 @@ export interface TeamUser {
   createdAt: string;
 }
 
+// プラットフォーム管理者(platform_admins)は開発者用のクロスチーム越境アカウントなので、
+// チーム管理者が見るこの一覧には出さない(自チームのメンバーではないため)。
 export async function listUsers(): Promise<TeamUser[]> {
   const teamId = await getCurrentTeamId();
   if (!teamId) return [];
   const supabase = createAdminClient();
-  const { data, error } = await withTimeout(
-    supabase.from("users").select("*").eq("team_id", teamId).order("created_at", { ascending: true })
-  );
+  const [{ data, error }, { data: platformAdmins }] = await Promise.all([
+    withTimeout(supabase.from("users").select("*").eq("team_id", teamId).order("created_at", { ascending: true })),
+    withTimeout(supabase.from("platform_admins").select("user_id")),
+  ]);
   if (error) return [];
-  return (data ?? []).map((r) => ({
-    userId: r.user_id,
-    email: r.email,
-    role: r.role as Role,
-    playerId: r.player_id,
-    isTeamManager: r.is_team_manager ?? false,
-    createdAt: r.created_at,
-  }));
+  const platformAdminIds = new Set((platformAdmins ?? []).map((r) => r.user_id));
+  return (data ?? [])
+    .filter((r) => !platformAdminIds.has(r.user_id))
+    .map((r) => ({
+      userId: r.user_id,
+      email: r.email,
+      role: r.role as Role,
+      playerId: r.player_id,
+      isTeamManager: r.is_team_manager ?? false,
+      createdAt: r.created_at,
+    }));
 }
 
 // メールアドレスからユーザーを新規登録する。auth.usersに存在しなければ作成し(招待扱い)、
