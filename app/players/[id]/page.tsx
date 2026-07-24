@@ -56,11 +56,15 @@ export default async function PlayerDetailPage({
   const wellness = await wellnessTrend(player, date);
   const history = await careHistory(player);
 
+  const canViewPlayerList = hasRole(user, VIEW_PLAYERS);
+
   return (
     <>
-      <Link href="/players" className="back">
-        ← 選手一覧へ戻る
-      </Link>
+      {canViewPlayerList && (
+        <Link href="/players" className="back">
+          ← 選手一覧へ戻る
+        </Link>
+      )}
 
       <div className="detail-head">
         <div className="avatar" style={{ background: player.color }}>
