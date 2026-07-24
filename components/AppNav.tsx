@@ -72,10 +72,12 @@ const NAV_ITEMS: { href: string; icon: string; label: string; roles: Role[] | "a
 export default function AppNav({
   role,
   isSuperAdmin,
+  isTeamManager,
   playerId,
 }: {
   role: Role | null;
   isSuperAdmin: boolean;
+  isTeamManager: boolean;
   playerId: string | null;
 }) {
   const pathname = usePathname();
@@ -102,7 +104,14 @@ export default function AppNav({
   }
 
   const visibleItems = NAV_ITEMS.filter(
-    (item) => isSuperAdmin || item.roles === "all" || (role && item.roles.includes(role))
+    (item) =>
+      isSuperAdmin ||
+      item.roles === "all" ||
+      (role && item.roles.includes(role)) ||
+      // isTeamManager(§ユーザー管理権限)はroleと独立したフラグ。設定画面は
+      // role=adminでなくてもメンバー管理を任された人なら表示する(/settingsページ側の
+      // canManageUsers判定と揃える)。
+      (item.href === "/settings" && isTeamManager)
   );
 
   return (

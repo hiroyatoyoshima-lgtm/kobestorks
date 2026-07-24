@@ -53,6 +53,7 @@ export default async function RootLayout({
             <AppNav
               role={user?.role ?? null}
               isSuperAdmin={user?.isSuperAdmin ?? false}
+              isTeamManager={user?.isTeamManager ?? false}
               playerId={user?.playerId ?? null}
             />
             <div className="app-body">
